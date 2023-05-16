@@ -1,0 +1,10 @@
+*.egg-info/
+.vscode/
+.tox/
+build/
+configs/
+*.pyc
+__pycache__/
+lightning_logs/
+data/
+.project_root
