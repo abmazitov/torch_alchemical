@@ -13,4 +13,5 @@ setup(
         "lightning",
         "torch_spex @ https://github.com/frostedoyster/torch_spex/archive/refs/heads/master.zip",
     ],
+    dependency_links=["https://download.pytorch.org/whl/cpu"],
 )
