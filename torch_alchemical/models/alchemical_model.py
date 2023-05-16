@@ -1,7 +1,8 @@
-import equistore
-import torch
 from typing import Union
+
+import equistore
 import numpy as np
+import torch
 
 from torch_alchemical.nn import (
     Linear,

@@ -1,7 +1,7 @@
-import torch
 import numpy as np
-from torch_geometric.data import Batch
+import torch
 from equistore import Labels, TensorBlock
+from torch_geometric.data import Batch
 
 
 def get_cartesian_vectors(batch: Batch) -> TensorBlock:

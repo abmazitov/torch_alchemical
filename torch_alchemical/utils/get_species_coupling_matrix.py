@@ -1,6 +1,7 @@
+from collections import namedtuple
+
 import numpy as np
 import torch
-from collections import namedtuple
 
 
 def get_species_coupling_matrix(species, n_contracted):

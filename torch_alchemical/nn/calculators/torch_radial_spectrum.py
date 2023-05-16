@@ -1,10 +1,12 @@
-import torch
-import numpy as np
-from torch_spex.radial_basis import RadialBasis
-from equistore import TensorMap, TensorBlock, Labels
-from torch_alchemical.utils import get_cartesian_vectors
-from torch_geometric.data import Batch
 from typing import Union
+
+import numpy as np
+import torch
+from equistore import Labels, TensorBlock, TensorMap
+from torch_geometric.data import Batch
+from torch_spex.radial_basis import RadialBasis
+
+from torch_alchemical.utils import get_cartesian_vectors
 
 
 class RadialSpectrumCalculator(torch.nn.Module):
@@ -32,7 +34,7 @@ class RadialSpectrumCalculator(torch.nn.Module):
         r = torch.sum(edge_vec**2, axis=1) ** 0.5
         radial_basis = self.radial_basis_calculator(r)
         radial_expansion_blocks = []
-        for l, radial_basis_l in enumerate(radial_basis):
+        for _, radial_basis_l in enumerate(radial_basis):
             n_max_l = radial_basis_l.shape[1]
             radial_expansion_blocks.append(
                 TensorBlock(

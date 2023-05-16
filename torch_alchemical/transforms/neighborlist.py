@@ -1,8 +1,8 @@
-import torch
 import numpy as np
+import torch
+from ase.neighborlist import primitive_neighbor_list
 from torch_geometric.data import Data
 from torch_geometric.transforms import BaseTransform
-from ase.neighborlist import primitive_neighbor_list
 
 
 class NeighborList(BaseTransform):
