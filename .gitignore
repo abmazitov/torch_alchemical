@@ -6,6 +6,6 @@ configs/
 *.pyc
 __pycache__/
 lightning_logs/
-data/
+/data
 .project_root
 jobscript
