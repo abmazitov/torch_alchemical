@@ -25,6 +25,7 @@ class RadialSpectrumFeatures(torch.nn.Module):
             all_species,
             cutoff_radius=cutoff_radius,
             basis_cutoff=basis_cutoff,
+            device=device,
         )
 
     def forward(self, batch: Batch):

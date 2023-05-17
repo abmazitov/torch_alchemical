@@ -17,10 +17,10 @@ from typing import Optional
 torch.set_default_dtype(torch.float64)
 
 N_PSEUDO = 4
-CUTOFF = 5.0
-HIDDEN_SIZE = 80
-RADIAL_BASIS_CUTOFF = 250.0
-PS_BASIS_CUTOFF = 180.0
+CUTOFF = 6.0
+HIDDEN_SIZES = [80, 80]
+RADIAL_BASIS_CUTOFF = 350.0
+PS_BASIS_CUTOFF = 300.0
 ENERGIES_WEIGHT = 1.0
 FORCES_WEIGHT = 1.0
 TRAIN_VAL_TEST = [0.8, 0.1, 0.1]
@@ -51,7 +51,7 @@ class LitModel(pl.LightningModule):
         self.model = model
         self.energies_weight = energies_weight
         self.forces_weight = forces_weight
-        self.automatic_optimization = False
+        # self.automatic_optimization = False
 
     def initialize_composition_layer_weights(self, model, datamodule):
         assert hasattr(model, "composition_layer")
@@ -88,54 +88,55 @@ class LitModel(pl.LightningModule):
         self.train_energies_mae = 0.0
         self.train_forces_mae = 0.0
 
-    def training_step(self, batch, batch_idx):
-        optimizer = self.optimizers()
-
-        def closure():
-            optimizer.zero_grad()
-            predicted_energies, predicted_forces = self.model(batch)
-            target_energies = batch.energies
-            target_forces = batch.forces
-            energies_loss = self.energies_weight * mse_loss(
-                predicted_energies.flatten(), target_energies.flatten(), reduction="sum"
-            )
-            forces_loss = self.forces_weight * mse_loss(
-                predicted_forces.flatten(), target_forces.flatten(), reduction="sum"
-            )
-            loss = energies_loss + forces_loss
-            self.manual_backward(loss)
-            self.epoch_loss = loss.detach().item()
-            self.train_energies_mae = l1_loss(
-                predicted_energies.detach().flatten(),
-                target_energies.detach().flatten(),
-            )
-            self.train_forces_mae = l1_loss(
-                predicted_forces.flatten(), target_forces.flatten()
-            )
-            return loss
-
-        optimizer.step(closure)
-
     # def training_step(self, batch, batch_idx):
-    #     predicted_energies, predicted_forces = self.model(batch)
-    #     target_energies = batch.energies
-    #     target_forces = batch.forces
-    #     energies_loss = self.energies_weight * mse_loss(
-    #         predicted_energies.flatten(), target_energies, reduction="sum"
-    #     )
-    #     forces_loss = self.forces_weight * mse_loss(
-    #         predicted_forces, target_forces, reduction="sum"
-    #     )
-    #     loss = energies_loss + forces_loss
-    #     self.epoch_loss += loss.detach().item()
-    #     predicted_energies = predicted_energies.detach()
-    #     predicted_forces = predicted_forces.detach()
-    #     self.train_energies_mae += l1_loss(
-    #         predicted_energies.flatten(), target_energies
-    #     )
-    #     self.train_forces_mae += l1_loss(predicted_forces, target_forces)
+    #     optimizer = self.optimizers()
 
-    #     return loss
+    #     def closure():
+    #         optimizer.zero_grad()
+    #         predicted_energies, predicted_forces = self.model(batch)
+    #         target_energies = batch.energies
+    #         target_forces = batch.forces
+    #         energies_loss = self.energies_weight * mse_loss(
+    #             predicted_energies.flatten(), target_energies.flatten(), reduction="sum"
+    #         )
+    #         forces_loss = self.forces_weight * mse_loss(
+    #             predicted_forces.flatten(), target_forces.flatten(), reduction="sum"
+    #         )
+    #         loss = energies_loss + forces_loss
+    #         self.manual_backward(loss)
+    #         self.epoch_loss = loss.detach().item()
+    #         self.train_energies_mae = l1_loss(
+    #             predicted_energies.detach().flatten(),
+    #             target_energies.detach().flatten(),
+    #         )
+    #         self.train_forces_mae = l1_loss(
+    #             predicted_forces.flatten(), target_forces.flatten()
+    #         )
+    #         print(f"Loss: {self.epoch_loss}")
+    #         return loss
+
+    #     optimizer.step(closure)
+
+    def training_step(self, batch, batch_idx):
+        predicted_energies, predicted_forces = self.model(batch)
+        target_energies = batch.energies
+        target_forces = batch.forces
+        energies_loss = self.energies_weight * mse_loss(
+            predicted_energies.flatten(), target_energies, reduction="sum"
+        )
+        forces_loss = self.forces_weight * mse_loss(
+            predicted_forces, target_forces, reduction="sum"
+        )
+        loss = energies_loss + forces_loss
+        self.epoch_loss += loss.detach().item()
+        predicted_energies = predicted_energies.detach()
+        predicted_forces = predicted_forces.detach()
+        self.train_energies_mae += l1_loss(
+            predicted_energies.flatten(), target_energies
+        )
+        self.train_forces_mae += l1_loss(predicted_forces, target_forces)
+
+        return loss
 
     def on_train_epoch_end(self):
         num_batches = len(self.trainer.datamodule.train_dataloader())
@@ -173,18 +174,18 @@ class LitModel(pl.LightningModule):
             f"Val Energies MAE: {val_energies_mae:.4f}, Val Forces MAE: {val_forces_mae:.4f}"
         )
 
-    # def configure_optimizers(self):
-    #     optimizer = torch.optim.Adam(self.parameters(), lr=1e-3, weight_decay=1e-5)
-    #     scheduler = torch.optim.lr_scheduler.ExponentialLR(
-    #         optimizer, gamma=0.99, verbose=True
-    #     )
-    #     return [optimizer], [scheduler]
-
     def configure_optimizers(self):
-        optimizer = torch.optim.LBFGS(
-            self.parameters(), lr=0.05, history_size=128, line_search_fn="strong_wolfe"
+        optimizer = torch.optim.Adam(self.parameters(), lr=1e-3, weight_decay=1e-5)
+        scheduler = torch.optim.lr_scheduler.ExponentialLR(
+            optimizer, gamma=0.99, verbose=True
         )
-        return optimizer
+        return [optimizer], [scheduler]
+
+    # def configure_optimizers(self):
+    #     optimizer = torch.optim.LBFGS(
+    #         self.parameters(), lr=0.05, history_size=128, line_search_fn="strong_wolfe"
+    #     )
+    #     return optimizer
 
 
 class LitDataModule(pl.LightningDataModule):
@@ -202,7 +203,7 @@ class LitDataModule(pl.LightningDataModule):
         self.shuffle = shuffle
 
     def prepare_data(self):
-        self.frames = read(self.frames_path, ":")[:1250]
+        self.frames = read(self.frames_path, ":")[:100]
         self.unique_numbers = get_list_of_unique_atomic_numbers(self.frames)
 
     def setup(self, stage: Optional[str] = None):
@@ -253,19 +254,22 @@ class LitDataModule(pl.LightningDataModule):
 
 if __name__ == "__main__":
     datamodule = LitDataModule(
-        "../data/hea_samples_bulk.xyz", batch_size="len", shuffle=False, verbose=True
+        "../data/bulk_random_data.xyz", batch_size=16, shuffle=False, verbose=True
     )
     datamodule.prepare_data()
     datamodule.setup(stage="prepare")
 
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
     model = AlchemicalModel(
-        hidden_sizes=HIDDEN_SIZE,
+        hidden_sizes=HIDDEN_SIZES,
         output_size=1,
         unique_numbers=datamodule.unique_numbers,
         cutoff=CUTOFF,
         basis_cutoff_radial_spectrum=RADIAL_BASIS_CUTOFF,
         basis_cutoff_power_spectrum=PS_BASIS_CUTOFF,
         num_pseudo_species=N_PSEUDO,
+        device=device,
     )
 
     litmodel = LitModel(
@@ -279,12 +283,12 @@ if __name__ == "__main__":
             mode="min",
         ),
         pl.callbacks.ModelCheckpoint(
-            monitor="loss", filename="{epoch}-{loss:.4f}", save_top_k=1, mode="min"
+            monitor="loss", filename="best_model.pl", save_top_k=1, mode="min"
         ),
     ]
 
     litmodel.initialize_composition_layer_weights(litmodel.model, datamodule)
     litmodel.initialize_combining_matrix(litmodel.model, datamodule)
 
-    trainer = pl.Trainer(max_epochs=1000, callbacks=callbacks)
+    trainer = pl.Trainer(max_epochs=1000, callbacks=callbacks, accelerator="gpu", devices=1)
     trainer.fit(litmodel, datamodule)

@@ -29,7 +29,7 @@ def get_cartesian_vectors(batch: Batch) -> TensorBlock:
             edge_shift[:, 2],
         ),
         dim=-1,
-    )
+    ).cpu().numpy()
 
     block = TensorBlock(
         values=vectors.unsqueeze(dim=-1),

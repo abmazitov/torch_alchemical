@@ -28,6 +28,7 @@ class PowerSpectrumFeatures(torch.nn.Module):
             cutoff_radius=cutoff_radius,
             basis_cutoff=basis_cutoff,
             num_pseudo_species=num_pseudo_species,
+            device=device,
         )
         self.ps_calculator = PowerSpectrumCalculator(all_species)
 
