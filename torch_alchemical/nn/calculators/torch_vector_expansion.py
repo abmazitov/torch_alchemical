@@ -32,13 +32,13 @@ class VectorExpansionCalculator(torch.nn.Module):
         radial_basis = self.radial_basis_calculator(r)
 
         spherical_harmonics = None
-        for vectors in bare_cartesian_vectors.split(batch_size):
-            batch_features = self.spherical_harmonics_calculator(vectors)
-            if not features:
-                features = batch_features
+        for vectors in bare_cartesian_vectors.split(self.batch_size):
+            batch_spherical_harmonics = self.spherical_harmonics_calculator(vectors)
+            if not spherical_harmonics:
+                spherical_harmonics = batch_spherical_harmonics
             else:
-                for i in range(len(batch_features)):
-                    features[i] = torch.cat((features[i], batch_features[i]), dim=0)
+                for i in range(len(batch_spherical_harmonics)):
+                    spherical_harmonics[i] = torch.cat((spherical_harmonics[i], batch_spherical_harmonics[i]), dim=0)
 
         # Use broadcasting semantics to get the products in equistore shape
         vector_expansion_blocks = []
