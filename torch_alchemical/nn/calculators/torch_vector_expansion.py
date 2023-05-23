@@ -10,13 +10,14 @@ from torch_alchemical.utils import get_cartesian_vectors
 
 class VectorExpansionCalculator(torch.nn.Module):
     def __init__(
-        self, cutoff_radius: float, basis_cutoff: float, device: torch.device = None
+        self, cutoff_radius: float, basis_cutoff: float, device: torch.device = None, batch_size: int = 10000
     ):
         super().__init__()
         self.cutoff_radius = cutoff_radius
         self.cutoff_energy = basis_cutoff
         if device is None:
             device = torch.device("cpu")
+        self.batch_size = batch_size
         self.radial_basis_calculator = RadialBasis(
             {"r_cut": cutoff_radius, "E_max": basis_cutoff}, device=device
         )
@@ -30,9 +31,14 @@ class VectorExpansionCalculator(torch.nn.Module):
         r = torch.sqrt((bare_cartesian_vectors**2).sum(dim=-1))
         radial_basis = self.radial_basis_calculator(r)
 
-        spherical_harmonics = self.spherical_harmonics_calculator(
-            bare_cartesian_vectors
-        )
+        spherical_harmonics = None
+        for vectors in bare_cartesian_vectors.split(batch_size):
+            batch_features = self.spherical_harmonics_calculator(vectors)
+            if not features:
+                features = batch_features
+            else:
+                for i in range(len(batch_features)):
+                    features[i] = torch.cat((features[i], batch_features[i]), dim=0)
 
         # Use broadcasting semantics to get the products in equistore shape
         vector_expansion_blocks = []
