@@ -39,11 +39,12 @@ class FCNN(torch.nn.Module):
         rs_input_size = self.rs_features_layer.num_features
         ps_input_size = self.ps_features_layer.num_features
         input_size = rs_input_size + ps_input_size
-        layer_size = [input_size] + hidden_sizes + [output_size]
+        layer_size = [input_size] + hidden_sizes
         layers = []
         for layer_index in range(1, len(layer_size)):
             layers.append(Linear(layer_size[layer_index - 1], layer_size[layer_index]))
             layers.append(SiLU())
+        layers.append(Linear(layer_size[-1], output_size))
         self.nn = torch.nn.Sequential(*layers)
 
     def forward(self, batch, training=True):

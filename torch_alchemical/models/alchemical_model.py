@@ -40,11 +40,12 @@ class AlchemicalModel(torch.nn.Module):
         ps_input_size = self.ps_features_layer.num_features
         self.rs_linear = Linear(rs_input_size, output_size)
         self.ps_linear = Linear(ps_input_size, output_size)
-        layer_size = [ps_input_size] + hidden_sizes + [output_size]
+        layer_size = [ps_input_size] + hidden_sizes
         layers = []
         for layer_index in range(1, len(layer_size)):
             layers.append(Linear(layer_size[layer_index - 1], layer_size[layer_index]))
             layers.append(SiLU())
+        layers.append(Linear(layer_size[-1], output_size))
         self.nn = torch.nn.Sequential(*layers)
 
     def forward(self, batch, training=True):
