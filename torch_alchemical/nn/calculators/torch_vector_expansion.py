@@ -2,7 +2,8 @@ import numpy as np
 import torch
 from equistore import Labels, TensorBlock, TensorMap
 from torch_geometric.data import Batch
-from torch_spex.angular_basis import AngularBasis
+
+import sphericart
 from torch_spex.radial_basis import RadialBasis
 
 from torch_alchemical.utils import get_cartesian_vectors
@@ -18,10 +19,12 @@ class VectorExpansionCalculator(torch.nn.Module):
         if device is None:
             device = torch.device("cpu")
         self.radial_basis_calculator = RadialBasis(
-            {"r_cut": cutoff_radius, "E_max": basis_cutoff}, device=device
+            {"r_cut": cutoff_radius, "E_max": basis_cutoff},
+            all_species=#TODO Add numpy array of species here
+            device=device
         )
         self.l_max = self.radial_basis_calculator.l_max
-        self.spherical_harmonics_calculator = AngularBasis(self.l_max)
+        self.spherical_harmonics_calculator = sphericart.SphericalHarmonics(self.l_max, normalized=True)
 
     def forward(self, data: Batch) -> TensorMap:
         cartesian_vectors = get_cartesian_vectors(data)
@@ -31,6 +34,7 @@ class VectorExpansionCalculator(torch.nn.Module):
         radial_basis = self.radial_basis_calculator(r)
 
         spherical_harmonics = self.spherical_harmonics_calculator(bare_cartesian_vectors)
+        spherical_harmonics = [spherical_harmonics[:, l**2:(l+1)**2] for l in range(self.l_max + 1)]
 
         # Use broadcasting semantics to get the products in equistore shape
         vector_expansion_blocks = []
