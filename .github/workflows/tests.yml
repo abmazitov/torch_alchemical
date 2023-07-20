@@ -2,7 +2,7 @@ name: tests
 
 on:
   push:
-    branches: [master]
+    branches: [master, update_to_torch_spex_changes]
     tags: "*"
   pull_request:
     # Check all PR
