@@ -51,7 +51,7 @@ class FCNN(torch.nn.Module):
         energies = self.composition_layer(batch.composition)
         rs = self.rs_features_layer(batch)
         ps = self.ps_features_layer(batch)
-        x = equistore.join((rs, ps), axis='properties')
+        x = equistore.join((rs, ps), axis="properties")
         x = self.nn(x)
         energies += (
             equistore.sum_over_samples(x.keys_to_samples("a_i"), ["center", "a_i"])
