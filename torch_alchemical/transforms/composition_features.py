@@ -1,14 +1,15 @@
 import torch
 from torch_geometric.data import Data
 from torch_geometric.transforms import BaseTransform
+from torch_alchemical.utils import get_compositions_from_numbers
 
 
 class CompositionFeatures(BaseTransform):
     def __init__(
         self,
-        atomic_numbers: list[int],
+        unique_numbers: list[int],
     ):
-        self.atomic_numbers = atomic_numbers
+        self.unique_numbers = unique_numbers
 
     def __call__(
         self,
@@ -16,15 +17,9 @@ class CompositionFeatures(BaseTransform):
     ) -> Data:
         assert hasattr(data, "numbers")
         numbers, counts = torch.unique(data.numbers, return_counts=True)
-        composition = torch.tensor(
-            [
-                counts[numbers == number] if number in numbers else 0
-                for number in self.atomic_numbers
-            ],
-            dtype=torch.get_default_dtype(),
-        )
+        composition = get_compositions_from_numbers([numbers], self.unique_numbers)[0]
         data.composition = composition.view(1, -1)
         return data
 
     def __repr__(self) -> str:
-        return f"{self.__class__.__name__}(atomic_numbers={self.atomic_numbers})"
+        return f"{self.__class__.__name__}(atomic_numbers={self.unique_numbers})"
