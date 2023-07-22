@@ -10,6 +10,7 @@ import equistore
 
 
 torch.set_default_dtype(torch.float64)
+torch.manual_seed(0)
 
 
 class TestPowerSpectrum:
@@ -22,7 +23,7 @@ class TestPowerSpectrum:
     device = "cpu"
     frames = read("./tests/data/hea_bulk_test_sample.xyz", index=":")
     all_species = np.unique(np.hstack([frame.numbers for frame in frames]))
-    with open("./tests/configs/default_hypers.json", "r") as f:
+    with open("./tests/configs/default_hypers_alchemical.json", "r") as f:
         hypers = json.load(f)
     transforms = [NeighborList(cutoff_radius=hypers["cutoff radius"])]
     dataset = AtomisticDataset(
@@ -34,6 +35,7 @@ class TestPowerSpectrum:
         all_species=all_species,
         cutoff_radius=hypers["cutoff radius"],
         basis_cutoff=hypers["radial basis"]["E_max"],
+        num_pseudo_species=hypers["alchemical"],
     )
 
     def test_ps_features(self):
