@@ -5,6 +5,7 @@ from .get_target_properties import get_target_properties
 from .get_torch_spex_dict import get_torch_spex_dict, get_torch_spex_dict_from_batch
 from .get_compositions_from_numbers import get_compositions_from_numbers
 from .get_autograd_derivatives import get_autograd_forces
+from .extract_batch_data import extract_batch_data
 
 __all__ = [
     "get_list_of_unique_atomic_numbers",
@@ -15,4 +16,5 @@ __all__ = [
     "get_torch_spex_dict_from_batch",
     "get_compositions_from_numbers",
     "get_autograd_forces",
+    "extract_batch_data",
 ]
