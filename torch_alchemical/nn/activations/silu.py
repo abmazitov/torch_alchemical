@@ -8,7 +8,7 @@ class SiLU(torch.nn.SiLU):
 
     def forward(self, tensormap: TensorMap) -> TensorMap:
         output_blocks = []
-        for _, block in tensormap:
+        for block in tensormap:
             new_block = TensorBlock(
                 values=super().forward(block.values),
                 samples=block.samples,

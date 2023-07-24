@@ -11,7 +11,7 @@ setup(
         "scipy",
         "torch_geometric",
         "lightning",
-        "torch_spex @ https://github.com/frostedoyster/torch_spex/archive/refs/heads/master.zip",
+        "torch_spex@git+https://github.com/frostedoyster/torch_spex.git@08cfe0d",
     ],
     dependency_links=["https://download.pytorch.org/whl/cpu"],
 )

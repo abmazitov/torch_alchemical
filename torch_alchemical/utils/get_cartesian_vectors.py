@@ -17,19 +17,23 @@ def get_cartesian_vectors(batch: Batch) -> TensorBlock:
     vectors = (
         pos[edge_dst] - pos[edge_src] + torch.einsum("ni,nij->nj", edge_shift, cell)
     )
-    labels = torch.stack(
-        (
-            edge_batch,
-            edge_src,
-            edge_dst,
-            batch.numbers[edge_src],
-            batch.numbers[edge_dst],
-            edge_shift[:, 0],
-            edge_shift[:, 1],
-            edge_shift[:, 2],
-        ),
-        dim=-1,
-    ).cpu().numpy()
+    labels = (
+        torch.stack(
+            (
+                edge_batch,
+                edge_src,
+                edge_dst,
+                batch.numbers[edge_src],
+                batch.numbers[edge_dst],
+                edge_shift[:, 0],
+                edge_shift[:, 1],
+                edge_shift[:, 2],
+            ),
+            dim=-1,
+        )
+        .cpu()
+        .numpy()
+    )
 
     block = TensorBlock(
         values=vectors.unsqueeze(dim=-1),

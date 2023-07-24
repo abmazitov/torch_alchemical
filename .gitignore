@@ -2,7 +2,6 @@
 .vscode/
 .tox/
 build/
-configs/
 *.pyc
 __pycache__/
 lightning_logs/

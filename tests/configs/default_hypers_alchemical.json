@@ -1,0 +1,7 @@
+{
+    "alchemical": 4,
+    "cutoff radius": 5.0,
+    "radial basis": {
+        "E_max": 50.0
+    }
+}
