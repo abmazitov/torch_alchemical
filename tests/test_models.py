@@ -43,7 +43,7 @@ class TestModels:
             cutoff=self.hypers["cutoff radius"],
             basis_cutoff_power_spectrum=self.hypers["radial basis"]["E_max"],
             num_pseudo_species=self.hypers["alchemical"],
-            device="cpu",
+            device=self.device,
         )
         positions, cells, numbers, edge_indices, edge_shifts = extract_batch_data(
             self.batch
