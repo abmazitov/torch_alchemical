@@ -36,6 +36,7 @@ class TestActivationFunctions:
         cutoff_radius=hypers["cutoff radius"],
         basis_cutoff=hypers["radial basis"]["E_max"],
         num_pseudo_species=hypers["alchemical"],
+        device=device,
     )
     with torch.no_grad():
         ps = calculator(
