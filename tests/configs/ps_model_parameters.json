@@ -1,0 +1,7 @@
+{
+    "hidden_sizes": [
+        8,
+        8
+    ],
+    "output_size": 1
+}

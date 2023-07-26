@@ -49,12 +49,10 @@ class RadialSpectrumFeatures(torch.nn.Module):
 
     @property
     def num_features(self):
-        vex_calculator = self.rex.vector_expansion_calculator
+        vex_calculator = self.rex_calculator.vector_expansion_calculator
         n_max = vex_calculator.radial_basis_calculator.n_max_l
         l_max = len(n_max) - 1
-        n_feat = sum(
-            [n_max[l] ** 2 * self.num_pseudo_species**2 for l in range(l_max + 1)]
-        )
+        n_feat = sum([n_max[l] * len(self.all_species) for l in range(l_max + 1)])
         return n_feat
 
 
