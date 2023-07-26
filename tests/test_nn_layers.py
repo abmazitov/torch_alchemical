@@ -5,7 +5,7 @@ import numpy as np
 from torch_alchemical.data import AtomisticDataset
 from torch_alchemical.transforms import NeighborList
 from torch_geometric.loader import DataListLoader
-from torch_alchemical.nn import PowerSpectrumFeatures, Linear
+from torch_alchemical.nn import PowerSpectrumFeatures, Linear, LayerNorm
 import equistore
 
 
@@ -56,8 +56,17 @@ class TestNNLayers:
         ref_linear_ps = equistore.core.io.load_custom_array(
             "./tests/data/linear_ps_test_data.npz", equistore.core.io.create_torch_array
         )
-        print(linear_ps[0].values)
-        print(ref_linear_ps[0].values)
         assert equistore.operations.allclose(
             linear_ps, ref_linear_ps, atol=1e-5, rtol=1e-5
         )
+
+    def test_layer_norm(self):
+        torch.manual_seed(0)
+        ps_input_size = self.calculator.num_features
+        norm = LayerNorm(ps_input_size)
+        with torch.no_grad():
+            norm_ps = norm(self.ps)
+        ref_norm_ps = equistore.core.io.load_custom_array(
+            "./tests/data/norm_ps_test_data.npz", equistore.core.io.create_torch_array
+        )
+        assert equistore.operations.allclose(norm_ps, ref_norm_ps, atol=1e-5, rtol=1e-5)

@@ -6,6 +6,7 @@ from .graph.transformer_conv import TransformerConv
 from .linear import Linear
 from .power_spectrum import PowerSpectrumFeatures
 from .radial_spectrum import RadialSpectrumFeatures
+from .normalization.layer_norm import LayerNorm
 
 __all__ = [
     "Linear",
@@ -16,4 +17,5 @@ __all__ = [
     "GCNConv",
     "GATConv",
     "TransformerConv",
+    "LayerNorm",
 ]
