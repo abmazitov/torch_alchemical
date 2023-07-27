@@ -1,0 +1,16 @@
+{
+    "frames_path": "./tests/data/hea_samples_bulk.xyz",
+    "train_val_test": [
+        0.8,
+        0.1,
+        0.1
+    ],
+    "batch_size": 16,
+    "neighborlist_cutoff_radius": 5.0,
+    "target_properties": [
+        "energies",
+        "forces"
+    ],
+    "shuffle": true,
+    "verbose": false
+}

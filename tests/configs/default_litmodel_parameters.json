@@ -1,0 +1,6 @@
+{
+    "lr": 1e-3,
+    "weight_decay": 1e-5,
+    "energies_weight": 1.0,
+    "forces_weight": 1.0
+}
