@@ -10,5 +10,4 @@ lightning_logs/
 .project_root
 jobscript
 slurm*
-train
 notebooks

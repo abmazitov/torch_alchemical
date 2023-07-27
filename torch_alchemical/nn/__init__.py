@@ -7,6 +7,8 @@ from .linear import Linear
 from .power_spectrum import PowerSpectrumFeatures
 from .radial_spectrum import RadialSpectrumFeatures
 from .normalization.layer_norm import LayerNorm
+from .loss_functions.mae import MAELoss, WeightedMAELoss
+from .loss_functions.mse import MSELoss, WeightedMSELoss
 
 __all__ = [
     "Linear",
@@ -18,4 +20,8 @@ __all__ = [
     "GATConv",
     "TransformerConv",
     "LayerNorm",
+    "MAELoss",
+    "WeightedMAELoss",
+    "MSELoss",
+    "WeightedMSELoss",
 ]
