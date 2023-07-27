@@ -62,7 +62,6 @@ class AlchemicalModel(torch.nn.Module):
         numbers: list[torch.Tensor],
         edge_indices: list[torch.Tensor],
         edge_shifts: list[torch.Tensor],
-        training=True,
     ):
         compositions = torch.stack(
             get_compositions_from_numbers(numbers, self.unique_numbers)

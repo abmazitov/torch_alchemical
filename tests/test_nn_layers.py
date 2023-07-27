@@ -5,8 +5,8 @@ import numpy as np
 from torch_alchemical.data import AtomisticDataset
 from torch_alchemical.transforms import NeighborList
 from torch_geometric.loader import DataListLoader
-from torch_alchemical.nn import PowerSpectrumFeatures, Linear, LayerNorm
 import equistore
+from torch_alchemical import nn
 
 
 torch.set_default_dtype(torch.float64)
@@ -31,7 +31,7 @@ class TestNNLayers:
     )
     dataloader = DataListLoader(dataset, batch_size=len(frames), shuffle=False)
     batch = next(iter(dataloader))
-    calculator = PowerSpectrumFeatures(
+    calculator = nn.PowerSpectrumFeatures(
         all_species=all_species,
         cutoff_radius=hypers["cutoff radius"],
         basis_cutoff=hypers["radial basis"]["E_max"],
@@ -50,7 +50,7 @@ class TestNNLayers:
     def test_linear(self):
         torch.manual_seed(0)
         ps_input_size = self.calculator.num_features
-        linear = Linear(ps_input_size, 1)
+        linear = nn.Linear(ps_input_size, 1)
         with torch.no_grad():
             linear_ps = linear(self.ps)
         ref_linear_ps = equistore.core.io.load_custom_array(
@@ -63,10 +63,26 @@ class TestNNLayers:
     def test_layer_norm(self):
         torch.manual_seed(0)
         ps_input_size = self.calculator.num_features
-        norm = LayerNorm(ps_input_size)
+        norm = nn.LayerNorm(ps_input_size)
         with torch.no_grad():
             norm_ps = norm(self.ps)
         ref_norm_ps = equistore.core.io.load_custom_array(
             "./tests/data/norm_ps_test_data.npz", equistore.core.io.create_torch_array
         )
         assert equistore.operations.allclose(norm_ps, ref_norm_ps, atol=1e-5, rtol=1e-5)
+
+    def test_loss_functions(self):
+        ref_energies = torch.load("./tests/data/hea_bulk_test_ps_energies.pt")
+        ref_forces = torch.load("./tests/data/hea_bulk_test_ps_forces.pt")
+        ref_forces = torch.cat(ref_forces, dim=0)
+        loss_fns = [
+            nn.MAELoss(),
+            nn.MSELoss(),
+            nn.WeightedMAELoss(weights=[1.0, 1.0]),
+            nn.WeightedMSELoss(weights=[1.0, 1.0]),
+        ]
+        for loss_fn in loss_fns:
+            loss = loss_fn(
+                predicted=[ref_energies, ref_forces], target=[ref_energies, ref_forces]
+            )
+            assert torch.allclose(loss, torch.tensor(0.0))

@@ -26,7 +26,9 @@ class TestModels:
     with open("./tests/configs/default_hypers_alchemical.json", "r") as f:
         hypers = json.load(f)
     with open("./tests/configs/ps_model_parameters.json", "r") as f:
-        model_parameters = json.load(f)
+        ps_model_parameters = json.load(f)
+    with open("./tests/configs/alchemical_model_parameters.json", "r") as f:
+        alchemical_model_parameters = json.load(f)
     transforms = [NeighborList(cutoff_radius=hypers["cutoff radius"])]
     dataset = AtomisticDataset(
         frames, target_properties=["energies", "forces"], transforms=transforms
@@ -37,13 +39,7 @@ class TestModels:
     def test_power_spectrum_model(self):
         torch.manual_seed(0)
         model = PowerSpectrumModel(
-            hidden_sizes=self.model_parameters["hidden_sizes"],
-            output_size=self.model_parameters["output_size"],
-            unique_numbers=self.all_species,
-            cutoff=self.hypers["cutoff radius"],
-            basis_cutoff_power_spectrum=self.hypers["radial basis"]["E_max"],
-            num_pseudo_species=self.hypers["alchemical"],
-            device=self.device,
+            **self.ps_model_parameters,
         )
         positions, cells, numbers, edge_indices, edge_shifts = extract_batch_data(
             self.batch
@@ -62,14 +58,7 @@ class TestModels:
     def test_alchemical_model(self):
         torch.manual_seed(0)
         model = AlchemicalModel(
-            hidden_sizes=self.model_parameters["hidden_sizes"],
-            output_size=self.model_parameters["output_size"],
-            unique_numbers=self.all_species,
-            cutoff=self.hypers["cutoff radius"],
-            basis_cutoff_radial_spectrum=self.hypers["radial basis"]["E_max"],
-            basis_cutoff_power_spectrum=self.hypers["radial basis"]["E_max"],
-            num_pseudo_species=self.hypers["alchemical"],
-            device=self.device,
+            **self.alchemical_model_parameters,
         )
         positions, cells, numbers, edge_indices, edge_shifts = extract_batch_data(
             self.batch
