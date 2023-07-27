@@ -4,16 +4,6 @@
         8
     ],
     "output_size": 1,
-    "unique_numbers": [
-        24,
-        25,
-        27,
-        28,
-        29,
-        42,
-        45,
-        74
-    ],
     "cutoff": 5.0,
     "basis_cutoff_power_spectrum": 50,
     "num_pseudo_species": 4,

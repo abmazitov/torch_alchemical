@@ -39,6 +39,7 @@ class TestModels:
     def test_power_spectrum_model(self):
         torch.manual_seed(0)
         model = PowerSpectrumModel(
+            unique_numbers=self.all_species,
             **self.ps_model_parameters,
         )
         positions, cells, numbers, edge_indices, edge_shifts = extract_batch_data(
@@ -49,15 +50,13 @@ class TestModels:
 
         ref_energies = torch.load("./tests/data/hea_bulk_test_ps_energies.pt")
         ref_forces = torch.load("./tests/data/hea_bulk_test_ps_forces.pt")
-
-        print(energies)
-        print(ref_energies)
         assert torch.allclose(energies, ref_energies)
         assert torch.allclose(torch.cat(forces), torch.cat(ref_forces))
 
     def test_alchemical_model(self):
         torch.manual_seed(0)
         model = AlchemicalModel(
+            unique_numbers=self.all_species,
             **self.alchemical_model_parameters,
         )
         positions, cells, numbers, edge_indices, edge_shifts = extract_batch_data(
@@ -68,8 +67,5 @@ class TestModels:
 
         ref_energies = torch.load("./tests/data/hea_bulk_test_alchemical_energies.pt")
         ref_forces = torch.load("./tests/data/hea_bulk_test_alchemical_forces.pt")
-
-        print(energies)
-        print(ref_energies)
         assert torch.allclose(energies, ref_energies)
         assert torch.allclose(torch.cat(forces), torch.cat(ref_forces))

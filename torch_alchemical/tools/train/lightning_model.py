@@ -71,7 +71,9 @@ class LitModel(pl.LightningModule):
         predicted_energies = self.model(
             positions, cells, numbers, edge_indices, edge_shifts
         )
-        predicted_forces = get_autograd_forces(predicted_energies, positions)
+        predicted_forces = torch.cat(
+            get_autograd_forces(predicted_energies, positions), dim=0
+        )
         target_energies = torch.cat(
             [data.energies.view(1, -1) for data in batch], dim=0
         )
