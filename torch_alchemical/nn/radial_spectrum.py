@@ -189,7 +189,9 @@ class RadialExpansion(torch.nn.Module):
 
         densities = []
         aj_metadata = samples_metadata["species_neighbor"]
-        aj_shifts = np.array([species_to_index[aj_index] for aj_index in aj_metadata])
+        aj_shifts = torch.tensor(
+            [species_to_index[aj_index] for aj_index in aj_metadata], device=self.device
+        )
         density_indices = torch.LongTensor(
             s_i_metadata_to_unique * n_species + aj_shifts
         ).to(self.device)
