@@ -11,7 +11,10 @@ def get_torch_spex_dict(
 ) -> dict:
     batch_dict = {}
     structure_centers = torch.cat(
-        [torch.tensor([i] * len(pos)) for i, pos in enumerate(positions)]
+        [
+            torch.tensor([i] * len(pos), device=edge.device)
+            for i, pos in enumerate(positions)
+        ]
     )
     species = torch.cat(numbers)
     cell_shifts = torch.cat(edge_shift)
