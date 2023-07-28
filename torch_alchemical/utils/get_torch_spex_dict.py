@@ -12,7 +12,7 @@ def get_torch_spex_dict(
     batch_dict = {}
     structure_centers = torch.cat(
         [
-            torch.tensor([i] * len(pos), device=edge.device)
+            torch.tensor([i] * len(pos), device=pos.device)
             for i, pos in enumerate(positions)
         ]
     )
