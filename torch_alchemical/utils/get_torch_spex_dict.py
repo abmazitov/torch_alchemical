@@ -16,7 +16,10 @@ def get_torch_spex_dict(
     species = torch.cat(numbers)
     cell_shifts = torch.cat(edge_shift)
     structure_pairs = torch.cat(
-        [torch.tensor([i] * edge.shape[1]) for i, edge in enumerate(edge_index)]
+        [
+            torch.tensor([i] * edge.shape[1], device=edge.device)
+            for i, edge in enumerate(edge_index)
+        ]
     )
     centers = torch.cat([torch.arange(len(pos)) for pos in positions])
     pairs = torch.cat(edge_index, dim=1).T
