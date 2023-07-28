@@ -192,9 +192,9 @@ class RadialExpansion(torch.nn.Module):
         aj_shifts = torch.tensor(
             [species_to_index[aj_index] for aj_index in aj_metadata], device=self.device
         )
-        density_indices = torch.LongTensor(
-            s_i_metadata_to_unique * n_species + aj_shifts
-        ).to(self.device)
+        density_indices = torch.tensor(
+            s_i_metadata_to_unique * n_species + aj_shifts, device=self.device
+        ).type(torch.LongTensor)
 
         for l in range(l_max + 1):
             expanded_vectors_l = expanded_vectors.block(l=l).values
