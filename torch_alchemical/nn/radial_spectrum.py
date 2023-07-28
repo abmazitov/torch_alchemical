@@ -231,9 +231,7 @@ class RadialExpansion(torch.nn.Module):
                 len(np.unique(vectors_l_block.properties["n"]))
             )  # Need to be smarter to optimize
             for a_i in self.all_species:
-                where_ai = torch.LongTensor(np.where(ai_new_indices == a_i)[0]).to(
-                    densities_l.device
-                )
+                where_ai = torch.where(ai_new_indices == a_i)[0].type(torch.LongTensor)
                 densities_ai_l = torch.index_select(densities_l, 0, where_ai)
                 labels.append([a_i, l])
                 blocks.append(
@@ -241,7 +239,9 @@ class RadialExpansion(torch.nn.Module):
                         values=densities_ai_l,
                         samples=Labels(
                             names=["structure", "center"],
-                            values=unique_s_i_indices.numpy()[where_ai.cpu().numpy()],
+                            values=unique_s_i_indices.cpu().numpy()[
+                                where_ai.cpu().numpy()
+                            ],
                         ),
                         components=vectors_l_block_components,
                         properties=Labels(
