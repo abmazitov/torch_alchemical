@@ -24,7 +24,9 @@ def get_torch_spex_dict(
             for i, edge in enumerate(edge_index)
         ]
     )
-    centers = torch.cat([torch.arange(len(pos)) for pos in positions])
+    centers = torch.cat(
+        [torch.arange(len(pos), device=pos.device) for pos in positions]
+    )
     pairs = torch.cat(edge_index, dim=1).T
     direction_vectors = torch.cat(
         [
