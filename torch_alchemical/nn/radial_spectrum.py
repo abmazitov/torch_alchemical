@@ -142,6 +142,7 @@ class RadialExpansion(torch.nn.Module):
         self.vector_expansion_calculator = VectorExpansion(
             hypers, self.all_species, device=device
         )
+        self.device = device
 
     def forward(
         self,
@@ -178,7 +179,7 @@ class RadialExpansion(torch.nn.Module):
         )
         _, inverse_idx = torch.unique(structure_pairs, return_inverse=True)
         centers_offsets_per_structure = torch.hstack(
-            (torch.tensor([0]), centers_count_per_structure[:-1])
+            (torch.tensor([0], device=self.device), centers_count_per_structure[:-1])
         ).cumsum(0)
         pairs_offset = centers_offsets_per_structure[inverse_idx]
         s_i_metadata_to_unique = pairs[:, 0] + pairs_offset
@@ -191,7 +192,7 @@ class RadialExpansion(torch.nn.Module):
         aj_shifts = np.array([species_to_index[aj_index] for aj_index in aj_metadata])
         density_indices = torch.LongTensor(
             s_i_metadata_to_unique * n_species + aj_shifts
-        )
+        ).to(self.device)
 
         for l in range(l_max + 1):
             expanded_vectors_l = expanded_vectors.block(l=l).values
