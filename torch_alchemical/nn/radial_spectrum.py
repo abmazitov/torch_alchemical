@@ -231,7 +231,9 @@ class RadialExpansion(torch.nn.Module):
                 len(np.unique(vectors_l_block.properties["n"]))
             )  # Need to be smarter to optimize
             for a_i in self.all_species:
-                where_ai = torch.where(ai_new_indices == a_i)[0].type(torch.LongTensor)
+                where_ai = torch.tensor(
+                    torch.where(ai_new_indices == a_i)[0], device=self.device
+                ).type(torch.LongTensor)
                 densities_ai_l = torch.index_select(densities_l, 0, where_ai)
                 labels.append([a_i, l])
                 blocks.append(
