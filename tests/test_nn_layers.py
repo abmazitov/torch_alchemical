@@ -29,7 +29,7 @@ class TestNNLayers:
         all_species=all_species,
         cutoff_radius=hypers["cutoff radius"],
         basis_cutoff=hypers["radial basis"]["E_max"],
-        basis_type=hypers["radial basis"]["type"],
+        radial_basis_type=hypers["radial basis"]["type"],
         trainable_basis=hypers["radial basis"]["mlp"],
         num_pseudo_species=hypers["alchemical"],
         device=device,
