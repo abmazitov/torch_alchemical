@@ -1,7 +1,7 @@
+from torch_alchemical.models import AlchemicalModel
+from torch_alchemical.tools.train import LitDataModule, LitModel
 import json
 import torch
-from torch_alchemical.tools.train import LitDataModule, LitModel
-from torch_alchemical.models import AlchemicalModel
 
 
 torch.set_default_dtype(torch.float64)

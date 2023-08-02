@@ -14,12 +14,6 @@ torch.manual_seed(0)
 
 
 class TestActivationFunctions:
-    """
-    Test the internal datatype conversion from torch_geometric.data.Batch to a dict
-    representation in torch_spex library, and a following calculation of the SphericalExpansion
-    coefficients.
-    """
-
     device = "cpu"
     frames = read("./tests/data/hea_bulk_test_sample.xyz", index=":")
     all_species = np.unique(np.hstack([frame.numbers for frame in frames]))
@@ -35,6 +29,8 @@ class TestActivationFunctions:
         all_species=all_species,
         cutoff_radius=hypers["cutoff radius"],
         basis_cutoff=hypers["radial basis"]["E_max"],
+        radial_basis_type=hypers["radial basis"]["type"],
+        trainable_basis=hypers["radial basis"]["mlp"],
         num_pseudo_species=hypers["alchemical"],
         device=device,
     )

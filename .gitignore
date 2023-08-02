@@ -10,3 +10,4 @@ lightning_logs/
 jobscript
 slurm*
 notebooks
+.pytest_cache

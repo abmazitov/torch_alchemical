@@ -22,6 +22,9 @@ class AlchemicalModel(torch.nn.Module):
         cutoff: float,
         basis_cutoff_radial_spectrum: float,
         basis_cutoff_power_spectrum: float,
+        radial_basis_type: str,
+        basis_normalization_factor: float = None,
+        trainable_basis: bool = True,
         num_pseudo_species: int = None,
         device: torch.device = None,
     ):
@@ -29,17 +32,23 @@ class AlchemicalModel(torch.nn.Module):
         self.unique_numbers = unique_numbers
         self.composition_layer = torch.nn.Linear(len(unique_numbers), output_size)
         self.rs_features_layer = RadialSpectrumFeatures(
-            unique_numbers,
-            cutoff,
-            basis_cutoff_radial_spectrum,
-            device,
+            all_species=unique_numbers,
+            cutoff_radius=cutoff,
+            basis_cutoff=basis_cutoff_radial_spectrum,
+            radial_basis_type=radial_basis_type,
+            basis_normalization_factor=basis_normalization_factor,
+            trainable_basis=trainable_basis,
+            device=device,
         )
         self.ps_features_layer = PowerSpectrumFeatures(
-            unique_numbers,
-            cutoff,
-            basis_cutoff_power_spectrum,
-            num_pseudo_species,
-            device,
+            all_species=unique_numbers,
+            cutoff_radius=cutoff,
+            basis_cutoff=basis_cutoff_power_spectrum,
+            radial_basis_type=radial_basis_type,
+            basis_normalization_factor=basis_normalization_factor,
+            trainable_basis=trainable_basis,
+            num_pseudo_species=num_pseudo_species,
+            device=device,
         )
         rs_input_size = self.rs_features_layer.num_features
         ps_input_size = self.ps_features_layer.num_features

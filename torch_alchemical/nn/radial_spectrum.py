@@ -14,19 +14,31 @@ class RadialSpectrumFeatures(torch.nn.Module):
         all_species: Union[list, np.ndarray],
         cutoff_radius: float,
         basis_cutoff: float,
+        radial_basis_type: str = "le",
+        basis_normalization_factor: float = None,
+        trainable_basis: bool = True,
         device: torch.device = None,
     ):
         super().__init__()
         self.all_species = all_species
         self.cutoff_radius = cutoff_radius
         self.basis_cutoff = basis_cutoff
+        self.radial_basis_type = radial_basis_type
+        self.basis_normalization_factor = basis_normalization_factor
+        self.trainable_basis = trainable_basis
         self.device = device
         hypers = {
             "cutoff radius": self.cutoff_radius,
             "radial basis": {
+                "type": self.radial_basis_type,
                 "E_max": self.basis_cutoff,
+                "mlp": self.trainable_basis,
+                "scale": 3.0,
+                "cost_trade_off": False,
             },
         }
+        if self.basis_normalization_factor:
+            hypers["normalize"] = self.basis_normalization_factor
         self.rex_calculator = RadialExpansion(
             hypers=hypers,
             all_species=self.all_species,
@@ -57,15 +69,16 @@ class RadialSpectrumFeatures(torch.nn.Module):
 
 
 class VectorExpansion(torch.nn.Module):
-    """ """
-
     def __init__(self, hypers: dict, all_species, device: str = "cpu") -> None:
         super().__init__()
 
         self.hypers = hypers
-        # radial basis needs to know cutoff so we pass it
+        self.normalize = True if "normalize" in hypers else False
+        # radial basis needs to know cutoff so we pass it,
+        # as well as whether to normalize or not
         hypers_radial_basis = copy.deepcopy(hypers["radial basis"])
         hypers_radial_basis["r_cut"] = hypers["cutoff radius"]
+        hypers_radial_basis["normalize"] = self.normalize
         self.radial_basis_calculator = RadialBasis(
             hypers_radial_basis, all_species, device=device
         )
@@ -73,22 +86,28 @@ class VectorExpansion(torch.nn.Module):
 
     def forward(
         self,
+        positions: list[torch.Tensor],
+        cells: list[torch.Tensor],
         species: torch.Tensor,
         cell_shifts: torch.Tensor,
         centers: torch.Tensor,
         pairs: torch.Tensor,
         structure_centers: torch.Tensor,
         structure_pairs: torch.Tensor,
-        direction_vectors: torch.Tensor,
+        structure_offsets: torch.Tensor,
     ) -> TensorMap:
+        positions = torch.concatenate(positions)
+        cells = torch.stack(cells)
         cartesian_vectors = get_cartesian_vectors(
+            positions,
+            cells,
             species,
             cell_shifts,
             centers,
             pairs,
             structure_centers,
             structure_pairs,
-            direction_vectors,
+            structure_offsets,
         )
 
         bare_cartesian_vectors = cartesian_vectors.values.squeeze(dim=-1)
@@ -121,6 +140,7 @@ class VectorExpansion(torch.nn.Module):
             ),
             blocks=vector_expansion_blocks,
         )
+
         return vector_expansion_tmap
 
 
@@ -136,6 +156,11 @@ class RadialExpansion(torch.nn.Module):
         super().__init__()
 
         self.hypers = hypers
+        self.normalize = True if "normalize" in hypers else False
+        if self.normalize:
+            avg_num_neighbors = hypers["normalize"]
+            self.normalization_factor = 1.0 / np.sqrt(avg_num_neighbors)
+            self.normalization_factor_0 = 1.0 / avg_num_neighbors ** (3 / 4)
         self.all_species = np.array(
             all_species, dtype=np.int32
         )  # convert potential list to np.array
@@ -146,55 +171,51 @@ class RadialExpansion(torch.nn.Module):
 
     def forward(
         self,
+        positions: list[torch.Tensor],
+        cells: list[torch.Tensor],
         species: torch.Tensor,
         cell_shifts: torch.Tensor,
         centers: torch.Tensor,
         pairs: torch.Tensor,
         structure_centers: torch.Tensor,
         structure_pairs: torch.Tensor,
-        direction_vectors: torch.Tensor,
+        structure_offsets: torch.Tensor,
     ) -> TensorMap:
         expanded_vectors = self.vector_expansion_calculator(
+            positions,
+            cells,
             species,
             cell_shifts,
             centers,
             pairs,
             structure_centers,
             structure_pairs,
-            direction_vectors,
+            structure_offsets,
         )
 
         samples_metadata = expanded_vectors.block(l=0).samples
-
         n_species = len(self.all_species)
         species_to_index = {
             atomic_number: i_species
             for i_species, atomic_number in enumerate(self.all_species)
         }
 
-        unique_s_i_indices = torch.stack((structure_centers, centers), dim=1)
-
-        _, centers_count_per_structure = torch.unique(
-            structure_centers, return_counts=True
+        unique_s_i_indices = torch.stack(
+            (structure_centers.cpu(), centers.cpu()), dim=1
         )
-        _, inverse_idx = torch.unique(structure_pairs, return_inverse=True)
-        centers_offsets_per_structure = torch.hstack(
-            (torch.tensor([0], device=self.device), centers_count_per_structure[:-1])
-        ).cumsum(0)
-        pairs_offset = centers_offsets_per_structure[inverse_idx]
-        s_i_metadata_to_unique = pairs[:, 0] + pairs_offset
+        s_i_metadata_to_unique = structure_offsets[structure_pairs] + pairs[:, 0]
 
         l_max = self.vector_expansion_calculator.l_max
         n_centers = len(centers)  # total number of atoms in this batch of structures
 
         densities = []
         aj_metadata = samples_metadata["species_neighbor"]
-        aj_shifts = torch.tensor(
-            [species_to_index[aj_index] for aj_index in aj_metadata], device=self.device
+        aj_shifts = torch.LongTensor(
+            [species_to_index[aj_index] for aj_index in aj_metadata]
         )
-        density_indices = torch.tensor(
-            s_i_metadata_to_unique * n_species + aj_shifts, device=self.device
-        ).type(torch.LongTensor)
+        density_indices = torch.LongTensor(
+            s_i_metadata_to_unique.cpu() * n_species + aj_shifts
+        )
 
         for l in range(l_max + 1):
             expanded_vectors_l = expanded_vectors.block(l=l).values
@@ -220,7 +241,6 @@ class RadialExpansion(torch.nn.Module):
         unique_species = self.all_species
 
         # constructs the TensorMap object
-        ai_new_indices = species
         labels = []
         blocks = []
         for l in range(l_max + 1):
@@ -231,19 +251,21 @@ class RadialExpansion(torch.nn.Module):
                 len(np.unique(vectors_l_block.properties["n"]))
             )  # Need to be smarter to optimize
             for a_i in self.all_species:
-                where_ai = torch.tensor(
-                    torch.where(ai_new_indices == a_i)[0], device=self.device
-                ).type(torch.LongTensor)
+                where_ai = torch.where(species == a_i)[0]
                 densities_ai_l = torch.index_select(densities_l, 0, where_ai)
+                if self.normalize:
+                    if l == 0:
+                        # Very high correlations for l = 0: use a stronger normalization
+                        densities_ai_l *= self.normalization_factor_0
+                    else:
+                        densities_ai_l *= self.normalization_factor
                 labels.append([a_i, l])
                 blocks.append(
                     TensorBlock(
                         values=densities_ai_l,
                         samples=Labels(
                             names=["structure", "center"],
-                            values=unique_s_i_indices.cpu().numpy()[
-                                where_ai.cpu().numpy()
-                            ],
+                            values=unique_s_i_indices.numpy()[where_ai.cpu().numpy()],
                         ),
                         components=vectors_l_block_components,
                         properties=Labels(
@@ -265,5 +287,7 @@ class RadialExpansion(torch.nn.Module):
             keys=Labels(names=["a_i", "l1"], values=np.array(labels, dtype=np.int32)),
             blocks=blocks,
         )
-        radial_expansion = radial_expansion.keys_to_properties(["l1"])
+
+        radial_expansion = radial_expansion.keys_to_properties("l1")
+
         return radial_expansion

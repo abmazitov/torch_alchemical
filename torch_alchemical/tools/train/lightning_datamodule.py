@@ -82,7 +82,7 @@ class LitDataModule(pl.LightningDataModule):
         if self.batch_size == "len":
             batch_size = len(self.val_dataset)
         dataloader = DataListLoader(
-            self.val_dataset, batch_size=batch_size, shuffle=self.shuffle
+            self.val_dataset, batch_size=batch_size, shuffle=False
         )
         return dataloader
 

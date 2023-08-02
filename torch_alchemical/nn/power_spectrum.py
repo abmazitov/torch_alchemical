@@ -12,6 +12,9 @@ class PowerSpectrumFeatures(torch.nn.Module):
         all_species: Union[list, np.ndarray],
         cutoff_radius: float,
         basis_cutoff: float,
+        radial_basis_type: str = "le",
+        basis_normalization_factor: float = None,
+        trainable_basis: bool = True,
         num_pseudo_species: int = None,
         device: torch.device = None,
     ):
@@ -19,22 +22,32 @@ class PowerSpectrumFeatures(torch.nn.Module):
         self.all_species = all_species
         self.cutoff_radius = cutoff_radius
         self.basis_cutoff = basis_cutoff
+        self.radial_basis_type = radial_basis_type
+        self.basis_normalization_factor = basis_normalization_factor
+        self.trainable_basis = trainable_basis
         self.num_pseudo_species = num_pseudo_species
         self.device = device
         hypers = {
             "cutoff radius": self.cutoff_radius,
             "radial basis": {
+                "type": self.radial_basis_type,
                 "E_max": self.basis_cutoff,
+                "mlp": self.trainable_basis,
+                "scale": 3.0,
+                "cost_trade_off": False,
             },
         }
         if self.num_pseudo_species is not None:
             hypers["alchemical"] = self.num_pseudo_species
+        if self.basis_normalization_factor:
+            hypers["normalize"] = self.basis_normalization_factor
         self.spex_calculator = SphericalExpansion(
             hypers=hypers,
             all_species=self.all_species,
             device=self.device,
         )
-        self.ps_calculator = PowerSpectrum(all_species)
+        self.l_max = self.spex_calculator.vector_expansion_calculator.l_max
+        self.ps_calculator = PowerSpectrum(self.l_max, all_species)
 
     def forward(
         self,
@@ -63,158 +76,43 @@ class PowerSpectrumFeatures(torch.nn.Module):
 
 
 class PowerSpectrum(torch.nn.Module):
-    def __init__(self, all_species):
+    def __init__(self, l_max, all_species):
         super(PowerSpectrum, self).__init__()
 
+        self.l_max = l_max
         self.all_species = all_species
-        self.nu_plus_one_count = {}
-        self.properties_values = {}
-        self.selected_features = {}
 
     def forward(self, spex):
-        do_gradients = spex.block(0).has_gradient("positions")
-
-        l_max = 0
-        for idx, block in spex.items():
-            l_max = max(l_max, idx["lam"])
-
         keys = []
         blocks = []
-        nu = 1
-
-        properties_names = [f"{name}" for name in spex.block(0).properties.names] + [
-            f"{name[:-1]}{nu+1}" for name in spex.block(0).properties.names
-        ]
-
         for a_i in self.all_species:
-            if nu not in self.nu_plus_one_count:
-                nu_plus_one_count = 0
-                selected_features = {}
-                properties_values = []
-
-                for l in range(l_max + 1):
-                    selected_features[l] = []
-
-                    block = spex.block(lam=l, a_i=a_i)
-
-                    for q_nu in range(block.values.shape[-1]):
-                        for q_1 in range(block.values.shape[-1]):
-                            properties_list = [
-                                [
-                                    block.properties[name][q_nu]
-                                    for name in block.properties.names
-                                ]
-                                + [
-                                    block.properties[name][q_1]
-                                    for name in block.properties.names[:-1]
-                                ]
-                                + [0]
-                            ]
-                            properties_values.append(properties_list)
-                            selected_features[l].append([q_nu, q_1])
-
-                            nu_plus_one_count += 1
-
-                keys_to_be_removed = []
-                for key in selected_features.keys():
-                    if len(selected_features[key]) == 0:
-                        keys_to_be_removed.append(key)  # No features were selected.
-                    else:
-                        selected_features[key] = torch.tensor(selected_features[key])
-
-                for key in keys_to_be_removed:
-                    selected_features.pop(key)
-
-                self.nu_plus_one_count[nu] = nu_plus_one_count
-                self.selected_features[nu] = selected_features
-                self.properties_values[nu] = properties_values
-
-            nu_plus_one_count = self.nu_plus_one_count[nu]
-            selected_features = self.selected_features[nu]
-            properties_values = self.properties_values[nu]
-
-            block = spex.block(lam=0, a_i=a_i)
-            data = torch.empty(
-                (len(block.samples), nu_plus_one_count), device=block.values.device
-            )
-            if do_gradients:
-                gradient_data = torch.zeros(
-                    (len(block.gradient("positions").samples), 3, nu_plus_one_count),
-                    device=block.values.device,
-                )
-
-            nu_plus_one_count = 0  # reset counter
-            for l in range(l_max + 1):  # l and lbda are now the same thing
-                if l not in selected_features:
-                    continue  # No features are selected.
-
+            ps_values_ai = []
+            for l in range(self.l_max + 1):
                 cg = 1.0 / np.sqrt(2 * l + 1)
+                block_ai_l = spex.block(lam=l, a_i=a_i)
+                c_ai_l = block_ai_l.values
 
-                block = spex.block(lam=l, a_i=a_i)
-                if do_gradients:
-                    gradients_nu = block.gradient("positions")
-                    samples_for_gradients_nu = torch.tensor(
-                        gradients_nu.samples["sample"], dtype=torch.int64
-                    )
-
-                block = spex.block(lam=l, a_i=a_i)
-                if do_gradients:
-                    gradients_1 = block.gradient("positions")
-                    samples_for_gradients_1 = torch.tensor(
-                        gradients_1.samples["sample"], dtype=torch.int64
-                    )
-
-                data[
-                    :,
-                    nu_plus_one_count : nu_plus_one_count
-                    + selected_features[l].shape[0],
-                ] = cg * torch.sum(
-                    block.values[:, :, selected_features[l][:, 0]]
-                    * block.values[:, :, selected_features[l][:, 1]],
-                    dim=1,
-                    keepdim=False,
+                # same as this:
+                # ps_ai_l = cg*torch.einsum("ima, imb -> iab", c_ai_l, c_ai_l)
+                # but faster:
+                ps_ai_l = cg * torch.sum(
+                    c_ai_l.unsqueeze(2) * c_ai_l.unsqueeze(3), dim=1
                 )
-                if do_gradients:
-                    gradient_data[
-                        :,
-                        :,
-                        nu_plus_one_count : nu_plus_one_count
-                        + selected_features[l].shape[0],
-                    ] = cg * torch.sum(
-                        gradients_nu.data[:, :, :, selected_features[l][:, 0]]
-                        * block.values[samples_for_gradients_nu][
-                            :, :, selected_features[l][:, 1]
-                        ].unsqueeze(dim=1)
-                        + block.values[samples_for_gradients_1][
-                            :, :, selected_features[l][:, 0]
-                        ].unsqueeze(dim=1)
-                        * gradients_1.data[:, :, :, selected_features[l][:, 1]],
-                        dim=2,
-                        keepdim=False,
-                    )  # exploiting broadcasting rules
 
-                nu_plus_one_count += selected_features[l].shape[0]
+                ps_ai_l = ps_ai_l.reshape(c_ai_l.shape[0], c_ai_l.shape[2] ** 2)
+                ps_values_ai.append(ps_ai_l)
+            ps_values_ai = torch.concatenate(ps_values_ai, dim=-1)
 
             block = TensorBlock(
-                values=data,
-                samples=block.samples,
+                values=ps_values_ai,
+                samples=block_ai_l.samples,
                 components=[],
-                properties=Labels(
-                    names=properties_names,
-                    values=np.asarray(np.vstack(properties_values), dtype=np.int32),
-                ),
+                properties=Labels.range("property", ps_values_ai.shape[-1]),
             )
-            if do_gradients:
-                block.add_gradient(
-                    "positions",
-                    data=gradient_data,
-                    samples=gradients_1.samples,
-                    components=[gradients_1.components[0]],
-                )
             keys.append([a_i])
             blocks.append(block)
 
-        LE_invariants = TensorMap(
+        power_spectrum = TensorMap(
             keys=Labels(
                 names=("a_i",),
                 values=np.array(keys),  # .reshape((-1, 2)),
@@ -222,4 +120,4 @@ class PowerSpectrum(torch.nn.Module):
             blocks=blocks,
         )
 
-        return LE_invariants
+        return power_spectrum

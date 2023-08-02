@@ -20,6 +20,9 @@ class PowerSpectrumModel(torch.nn.Module):
         unique_numbers: Union[list, np.ndarray],
         cutoff: float,
         basis_cutoff_power_spectrum: float,
+        radial_basis_type: str,
+        basis_normalization_factor: float = None,
+        trainable_basis: bool = True,
         num_pseudo_species: int = None,
         device: torch.device = None,
     ):
@@ -27,11 +30,14 @@ class PowerSpectrumModel(torch.nn.Module):
         self.unique_numbers = unique_numbers
         self.composition_layer = torch.nn.Linear(len(unique_numbers), output_size)
         self.ps_features_layer = PowerSpectrumFeatures(
-            unique_numbers,
-            cutoff,
-            basis_cutoff_power_spectrum,
-            num_pseudo_species,
-            device,
+            all_species=unique_numbers,
+            cutoff_radius=cutoff,
+            basis_cutoff=basis_cutoff_power_spectrum,
+            radial_basis_type=radial_basis_type,
+            basis_normalization_factor=basis_normalization_factor,
+            trainable_basis=trainable_basis,
+            num_pseudo_species=num_pseudo_species,
+            device=device,
         )
         ps_input_size = self.ps_features_layer.num_features
         self.ps_linear = Linear(ps_input_size, output_size)
