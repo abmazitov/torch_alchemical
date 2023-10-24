@@ -1,5 +1,5 @@
 import torch
-from equistore import TensorBlock, TensorMap
+from metatensor.torch import TensorBlock, TensorMap
 
 
 class LayerNorm(torch.nn.LayerNorm):

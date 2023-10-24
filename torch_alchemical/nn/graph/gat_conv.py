@@ -1,6 +1,6 @@
 import numpy as np
 import torch_geometric as pyg
-from equistore import Labels, TensorBlock, TensorMap
+from metatensor.torch import Labels, TensorBlock, TensorMap
 
 
 class GATConv(pyg.nn.GATConv):

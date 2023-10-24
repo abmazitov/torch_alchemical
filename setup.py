@@ -12,7 +12,7 @@ setup(
         "torch_geometric",
         "lightning",
         "ruamel.yaml",
-        "torch_spex@git+https://github.com/frostedoyster/torch_spex.git@d2750f3",
+        "torch_spex@git+https://github.com/lab-cosmo/torch_spex.git@5fb0d07",
     ],
     dependency_links=["https://download.pytorch.org/whl/cpu"],
 )

@@ -1,4 +1,4 @@
-import equistore
+import metatensor
 import numpy as np
 import torch
 
@@ -51,28 +51,33 @@ class PowerSpectrumModel(torch.nn.Module):
 
     def forward(
         self,
-        positions: list[torch.Tensor],
-        cells: list[torch.Tensor],
-        numbers: list[torch.Tensor],
-        edge_indices: list[torch.Tensor],
-        edge_shifts: list[torch.Tensor],
+        positions: torch.Tensor,
+        cells: torch.Tensor,
+        numbers: torch.Tensor,
+        edge_indices: torch.Tensor,
+        edge_shifts: torch.Tensor,
+        ptr: torch.Tensor,
     ):
         compositions = torch.stack(
-            get_compositions_from_numbers(numbers, self.unique_numbers)
+            get_compositions_from_numbers(numbers, self.unique_numbers, ptr)
         )
         energies = self.composition_layer(compositions)
         ps = self.ps_features_layer(
-            positions, cells, numbers, edge_indices, edge_shifts
+            positions, cells, numbers, edge_indices, edge_shifts, ptr
         )
         psl = self.ps_linear(ps)
         energies += (
-            equistore.sum_over_samples(psl.keys_to_samples("a_i"), ["center", "a_i"])
+            metatensor.torch.operations.sum_over_samples(
+                psl.keys_to_samples("a_i"), ["center", "a_i"]
+            )
             .block()
             .values
         )
         psnn = self.nn(ps)
         energies += (
-            equistore.sum_over_samples(psnn.keys_to_samples("a_i"), ["center", "a_i"])
+            metatensor.torch.operations.sum_over_samples(
+                psnn.keys_to_samples("a_i"), ["center", "a_i"]
+            )
             .block()
             .values
         )

@@ -4,7 +4,6 @@ from torch_alchemical.nn import WeightedMSELoss, MAELoss
 from torch_alchemical.utils import (
     get_species_coupling_matrix,
     get_compositions_from_numbers,
-    extract_batch_data,
     get_autograd_forces,
 )
 
@@ -24,15 +23,17 @@ class LitModel(pl.LightningModule):
         self.forces_weight = forces_weight
         self.lr = lr
         self.weight_decay = weight_decay
-        self.automatic_optimization = False
 
     def initialize_composition_layer_weights(self, model, datamodule):
         assert hasattr(model, "composition_layer")
         dataset = datamodule.train_dataset
         composition_layer = model.composition_layer
-        numbers = [data.numbers for data in dataset]
+        numbers = torch.cat([data.numbers for data in dataset])
+        ptr = torch.cumsum(
+            torch.tensor([0] + [data.num_nodes for data in dataset]), dim=0
+        )
         compositions = torch.stack(
-            get_compositions_from_numbers(numbers, datamodule.unique_numbers)
+            get_compositions_from_numbers(numbers, datamodule.unique_numbers, ptr)
         )
         compositions = torch.cat(
             (torch.ones(len(dataset)).view(-1, 1), compositions), dim=1
@@ -62,27 +63,26 @@ class LitModel(pl.LightningModule):
         print("Combinining matrix is initialized manually")
 
     def on_train_epoch_start(self):
-        self.epoch_loss = 0.0
         self.train_energies_mae = 0.0
         self.train_forces_mae = 0.0
 
     def forward(self, batch, training=True):
-        positions, cells, numbers, edge_indices, edge_shifts = extract_batch_data(batch)
         predicted_energies = self.model(
-            positions, cells, numbers, edge_indices, edge_shifts
+            positions=batch.pos,
+            cells=batch.cell,
+            numbers=batch.numbers,
+            edge_indices=batch.edge_index,
+            edge_shifts=batch.edge_shift,
+            ptr=batch.ptr,
         )
-        predicted_forces = torch.cat(
-            get_autograd_forces(predicted_energies, positions), dim=0
-        )
-        target_energies = torch.cat(
-            [data.energies.view(1, -1) for data in batch], dim=0
-        )
-        target_forces = torch.cat([data.forces for data in batch], dim=0)
+        predicted_forces = get_autograd_forces(predicted_energies, batch.pos)[0]
+        target_energies = batch.energies.view(-1, 1)
+        target_forces = batch.forces
+        print(predicted_energies.shape, target_energies.shape)
+        print(predicted_forces.shape, target_forces.shape)
         return predicted_energies, predicted_forces, target_energies, target_forces
 
     def training_step(self, batch, batch_idx):
-        optimizer = self.optimizers()
-        optimizer.zero_grad()
         (
             predicted_energies,
             predicted_forces,
@@ -90,29 +90,60 @@ class LitModel(pl.LightningModule):
             target_forces,
         ) = self.forward(batch)
 
-        loss_fn = WeightedMSELoss(weights=[self.energies_weight, self.forces_weight])
-        loss = loss_fn(
-            predicted=[predicted_energies, predicted_forces],
-            target=[target_energies, target_forces],
+        loss_fn = WeightedMSELoss(
+            energies_weight=self.energies_weight, forces_weight=self.forces_weight
         )
-        self.manual_backward(loss)
-        optimizer.step()
-        self.epoch_loss += loss.detach().item()
-        predicted_energies = predicted_energies.detach()
-        predicted_forces = predicted_forces.detach()
+        loss = loss_fn(
+            predicted_energies=predicted_energies,
+            predicted_forces=predicted_forces,
+            target_energies=target_energies,
+            target_forces=target_forces,
+        )
+        self.log(
+            "train_loss",
+            loss,
+            on_step=True,
+            on_epoch=True,
+            prog_bar=True,
+            batch_size=self.trainer.datamodule.batch_size,
+        )
+
         loss_fn = MAELoss()
-        self.train_energies_mae += loss_fn(predicted_energies, target_energies)
-        self.train_forces_mae += loss_fn(predicted_forces, target_forces)
+        train_energies_mae = loss_fn(
+            predicted_energies=predicted_energies.detach(),
+            target_energies=target_energies,
+        ).item()
+        train_forces_mae = loss_fn(
+            predicted_forces=predicted_forces.detach(), target_forces=target_forces
+        ).item()
+
+        self.log(
+            "train_energies_mae",
+            train_energies_mae,
+            on_step=True,
+            on_epoch=True,
+            prog_bar=True,
+            batch_size=self.trainer.datamodule.batch_size,
+        )
+        self.log(
+            "train_forces_mae",
+            train_forces_mae,
+            on_step=True,
+            on_epoch=True,
+            prog_bar=True,
+            batch_size=self.trainer.datamodule.batch_size,
+        )
+        self.train_energies_mae += train_energies_mae
+        self.train_forces_mae += train_forces_mae
+        return loss
 
     def on_train_epoch_end(self):
         num_batches = len(self.trainer.datamodule.train_dataloader())
-        epoch_loss = self.epoch_loss
         train_energies_mae = self.train_energies_mae / num_batches
         train_forces_mae = self.train_forces_mae / num_batches
-        print(
-            f"Train Energies MAE: {train_energies_mae:.4f}, Train Forces MAE: {train_forces_mae:.4f}"
-        )
-        self.log("loss", epoch_loss)
+        print("\n")
+        print(f"Energies MAE: Train {train_energies_mae:.3f}")
+        print(f"Forces MAE: Train {train_forces_mae:.3f}")
 
     def on_validation_epoch_start(self):
         torch.set_grad_enabled(True)
@@ -127,20 +158,39 @@ class LitModel(pl.LightningModule):
             target_forces,
         ) = self.forward(batch)
         loss_fn = MAELoss()
-        energies_mae = loss_fn(predicted_energies, target_energies)
-        forces_mae = loss_fn(predicted_forces, target_forces)
-        self.val_energies_mae += energies_mae.item()
-        self.val_forces_mae += forces_mae.item()
+        val_energies_mae = loss_fn(
+            predicted_energies=predicted_energies.detach(),
+            target_energies=target_energies,
+        ).item()
+        val_forces_mae = loss_fn(
+            predicted_forces=predicted_forces.detach(), target_forces=target_forces
+        ).item()
+        self.log(
+            "val_energies_mae",
+            val_energies_mae,
+            on_step=True,
+            on_epoch=True,
+            prog_bar=True,
+            batch_size=self.trainer.datamodule.batch_size,
+        )
+        self.log(
+            "val_forces_mae",
+            val_forces_mae,
+            on_step=True,
+            on_epoch=True,
+            prog_bar=True,
+            batch_size=self.trainer.datamodule.batch_size,
+        )
+        self.val_energies_mae += val_energies_mae
+        self.val_forces_mae += val_forces_mae
 
     def on_validation_epoch_end(self):
         num_batches = len(self.trainer.datamodule.val_dataloader())
         val_energies_mae = self.val_energies_mae / num_batches
         val_forces_mae = self.val_forces_mae / num_batches
-        self.log("val_energies_mae", val_energies_mae)
-        self.log("val_forces_mae", val_forces_mae)
-        print(
-            f"Val Energies MAE: {val_energies_mae:.4f}, Val Forces MAE: {val_forces_mae:.4f}"
-        )
+        print("\n")
+        print(f"Energies MAE: Val {val_energies_mae:.3f}")
+        print(f"Forces MAE: Val {val_forces_mae:.3f}")
 
     def configure_optimizers(self):
         optimizer = torch.optim.Adam(

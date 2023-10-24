@@ -1,6 +1,5 @@
-import numpy as np
 import torch
-from equistore import Labels, TensorBlock, TensorMap
+from metatensor.torch import Labels, TensorBlock, TensorMap
 
 
 class Linear(torch.nn.Linear):
@@ -9,7 +8,9 @@ class Linear(torch.nn.Linear):
         for block in tensormap:
             labels = Labels(
                 names=["out_features_idx"],
-                values=np.arange(self.out_features, dtype=np.int32).reshape(-1, 1),
+                values=torch.arange(self.out_features, dtype=torch.int64).reshape(
+                    -1, 1
+                ),
             )
             new_block = TensorBlock(
                 values=super().forward(block.values),
