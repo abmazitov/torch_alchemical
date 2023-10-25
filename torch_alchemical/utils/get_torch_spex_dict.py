@@ -12,7 +12,7 @@ def get_torch_spex_dict_from_data_lists(
     for tensor in positions + cells + numbers + edge_indices + edge_shifts:
         assert tensor.device == device
     species = torch.cat(numbers)
-    cell_shifts = torch.cat(edge_shifts).int()
+    cell_shifts = torch.cat(edge_shifts).to(torch.int64)
     centers = torch.cat([torch.arange(len(pos), device=device) for pos in positions])
     pairs = torch.cat(edge_indices, dim=1).T
 
@@ -77,7 +77,7 @@ def get_torch_spex_dict(
         positions=positions,
         cells=cells,
         species=numbers,
-        cell_shifts=edge_shifts.int(),
+        cell_shifts=edge_shifts.to(torch.int64),
         centers=centers,
         pairs=pairs,
         structure_centers=structure_centers,

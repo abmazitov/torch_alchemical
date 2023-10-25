@@ -28,12 +28,15 @@ def compare_dicts(data_dict, spex_batch):
         if isinstance(target, list):
             target = torch.cat(target, dim=0)
         equal = torch.equal(obj, target)
+        dtype_equal = obj.dtype == target.dtype
         if not equal:
             obj_content, obj_counts = obj.unique(dim=0, return_counts=True)
             target_content, target_counts = target.unique(dim=0, return_counts=True)
             content_equal = torch.equal(obj_content, target_content)
             counts_equal = torch.equal(obj_counts, target_counts)
-        assert equal or (content_equal and counts_equal)
+        assert (equal and dtype_equal) or (
+            content_equal and counts_equal and dtype_equal
+        )
 
 
 class TestTorchSpexCompatibility:
