@@ -19,7 +19,6 @@ model:
   hidden_sizes: [64, 64]
   output_size: 1
   cutoff: *neighborlist_cutoff
-  basis_cutoff_radial_spectrum: 100
   basis_cutoff_power_spectrum: 50
   radial_basis_type: "le"
   trainable_basis: true
@@ -37,6 +36,12 @@ trainer:
     filename: "best_model.pl"
     save_top_k: 1
     mode: "min"
+
+logging:
+  project: "universal_ff"
+  name: "ps_model_test"
+  save_dir: "./logs"
+  log_model: true
 
 
 

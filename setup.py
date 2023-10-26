@@ -11,6 +11,7 @@ setup(
         "scipy",
         "torch_geometric",
         "lightning",
+        "wandb",
         "ruamel.yaml",
         "torch_spex@git+https://github.com/lab-cosmo/torch_spex.git@5fb0d07",
     ],

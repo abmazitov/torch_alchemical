@@ -1,5 +1,9 @@
 from torch_alchemical.models import PowerSpectrumModel
 from torch_alchemical.tools.train import LitDataModule, LitModel
+from torch_alchemical.tools.train.initialize import (
+    initialize_combining_matrix,
+    initialize_composition_layer_weights,
+)
 import json
 import torch
 
@@ -30,5 +34,5 @@ class TestTools:
             unique_numbers=datamodule.unique_numbers, **self.model_parameters
         )
         litmodel = LitModel(model=model, **self.litmodel_parameters)
-        litmodel.initialize_composition_layer_weights(litmodel.model, datamodule)
-        litmodel.initialize_combining_matrix(litmodel.model, datamodule)
+        initialize_composition_layer_weights(litmodel.model, datamodule)
+        initialize_combining_matrix(litmodel.model, datamodule)

@@ -1,5 +1,9 @@
-from torch_alchemical.models import AlchemicalModel
+from torch_alchemical.models import PowerSpectrumModel
 from torch_alchemical.tools.train import LitDataModule, LitModel
+from torch_alchemical.tools.train.initialize import (
+    initialize_combining_matrix,
+    initialize_composition_layer_weights,
+)
 import torch
 import ruamel.yaml as yaml
 import argparse
@@ -20,7 +24,7 @@ if __name__ == "__main__":
     datamodule.prepare_data()
     datamodule.setup()
 
-    model = AlchemicalModel(
+    model = PowerSpectrumModel(
         unique_numbers=datamodule.unique_numbers, **parameters["model"]
     )
 
@@ -31,8 +35,8 @@ if __name__ == "__main__":
         )
     else:
         litmodel = LitModel(model=model, **parameters["litmodel"])
-        litmodel.initialize_composition_layer_weights(litmodel.model, datamodule)
-        litmodel.initialize_combining_matrix(litmodel.model, datamodule)
+        initialize_composition_layer_weights(litmodel.model, datamodule)
+        initialize_combining_matrix(litmodel.model, datamodule)
 
     early_stopping_callback = parameters["trainer"].pop("early_stopping_callback")
     checkpoint_callback = parameters["trainer"].pop("checkpoint_callback")
@@ -40,8 +44,12 @@ if __name__ == "__main__":
         pl.callbacks.EarlyStopping(**early_stopping_callback),
         pl.callbacks.ModelCheckpoint(**checkpoint_callback),
     ]
+    logger = pl.loggers.WandbLogger(**parameters["logging"])
+    logger.experiment.config.update(parameters)
+
     trainer = pl.Trainer(
         callbacks=callbacks,
+        logger=logger,
         **parameters["trainer"],
     )
     trainer.fit(litmodel, datamodule)
