@@ -5,7 +5,7 @@ from metatensor.torch import TensorBlock, TensorMap
 class LayerNorm(torch.nn.LayerNorm):
     def forward(self, tensormap: TensorMap) -> TensorMap:
         output_blocks = []
-        for block in tensormap:
+        for block in tensormap.blocks():
             new_block = TensorBlock(
                 values=super().forward(block.values),
                 samples=block.samples,

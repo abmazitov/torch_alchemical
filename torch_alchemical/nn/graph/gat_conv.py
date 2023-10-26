@@ -11,7 +11,7 @@ class GATConv(pyg.nn.GATConv):
         edge_weight: pyg.typing.OptTensor = None,
     ) -> TensorMap:
         output_blocks = []
-        for block in tensormap:
+        for block in tensormap.blocks():
             labels = Labels(
                 names=["out_features_idx"],
                 values=np.arange(self.out_channels, dtype=np.int32).reshape(-1, 1),

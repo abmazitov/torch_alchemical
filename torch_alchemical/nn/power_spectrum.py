@@ -63,7 +63,17 @@ class PowerSpectrumFeatures(torch.nn.Module):
         batch_dict = get_torch_spex_dict(
             positions, cells, numbers, edge_indices, edge_shifts, ptr
         )
-        spex = self.spex_calculator(**batch_dict)
+        spex = self.spex_calculator(
+            positions=batch_dict["positions"],
+            cells=batch_dict["cells"],
+            species=batch_dict["species"],
+            cell_shifts=batch_dict["cell_shifts"],
+            centers=batch_dict["centers"],
+            pairs=batch_dict["pairs"],
+            structure_centers=batch_dict["structure_centers"],
+            structure_pairs=batch_dict["structure_pairs"],
+            structure_offsets=batch_dict["structure_offsets"],
+        )
         power_spectrum = self.ps_calculator(spex)
         return power_spectrum
 

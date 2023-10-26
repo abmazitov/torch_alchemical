@@ -55,7 +55,7 @@ def get_torch_spex_dict(
     edge_indices: torch.Tensor,
     edge_shifts: torch.Tensor,
     ptr: torch.Tensor,
-) -> dict:
+):
     device = positions.device
     if cells.ndim == 2:
         cells = cells.reshape(-1, 3, 3)
