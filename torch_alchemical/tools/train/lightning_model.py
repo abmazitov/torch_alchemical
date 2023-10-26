@@ -78,8 +78,6 @@ class LitModel(pl.LightningModule):
         predicted_forces = get_autograd_forces(predicted_energies, batch.pos)[0]
         target_energies = batch.energies.view(-1, 1)
         target_forces = batch.forces
-        print(predicted_energies.shape, target_energies.shape)
-        print(predicted_forces.shape, target_forces.shape)
         return predicted_energies, predicted_forces, target_energies, target_forces
 
     def training_step(self, batch, batch_idx):

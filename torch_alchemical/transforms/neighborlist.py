@@ -1,4 +1,3 @@
-import numpy as np
 import torch
 from ase.neighborlist import primitive_neighbor_list
 from torch_geometric.data import Data
@@ -26,16 +25,9 @@ class NeighborList(BaseTransform):
             cell=data.cell.detach().cpu().numpy(),
             positions=data.pos.detach().cpu().numpy(),
             cutoff=self.cutoff_radius,
-            self_interaction=True,
+            self_interaction=False,
             use_scaled_positions=False,
         )
-        pairs_to_throw = np.logical_and(
-            edge_src == edge_dst, np.all(edge_shift == 0, axis=1)
-        )
-        pairs_to_keep = np.logical_not(pairs_to_throw)
-        edge_src = edge_src[pairs_to_keep]
-        edge_dst = edge_dst[pairs_to_keep]
-        edge_shift = edge_shift[pairs_to_keep]
         edge_index = torch.stack(
             [torch.LongTensor(edge_src), torch.LongTensor(edge_dst)], dim=0
         )
