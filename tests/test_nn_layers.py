@@ -23,6 +23,20 @@ class TestNNLayers:
             linear_ps, ref_linear_ps, atol=1e-5, rtol=1e-5
         )
 
+    def test_linearmap(self):
+        torch.manual_seed(0)
+        linear = nn.LinearMap(
+            self.ps.keys.values.flatten().tolist(), self.ps_input_size, 1
+        )
+        with torch.no_grad():
+            linear_ps = linear(self.ps)
+        ref_linear_ps = metatensor.torch.load(
+            "./tests/data/linearmap_ps_test_data.npz",
+        )
+        assert metatensor.operations.allclose(
+            linear_ps, ref_linear_ps, atol=1e-5, rtol=1e-5
+        )
+
     def test_layer_norm(self):
         torch.manual_seed(0)
         norm = nn.LayerNorm(self.ps_input_size)

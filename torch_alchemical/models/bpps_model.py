@@ -5,14 +5,14 @@ import torch
 from typing import Union
 
 from torch_alchemical.nn import (
-    Linear,
+    LinearMap,
     PowerSpectrumFeatures,
     SiLU,
 )
 from torch_alchemical.utils import get_compositions_from_numbers
 
 
-class BPPS(torch.nn.Module):
+class BPPSModel(torch.nn.Module):
     def __init__(
         self,
         hidden_sizes: int,
@@ -21,7 +21,6 @@ class BPPS(torch.nn.Module):
         cutoff: float,
         basis_cutoff_power_spectrum: float,
         radial_basis_type: str,
-        normalize_layers: bool = False,
         basis_normalization_factor: float = None,
         trainable_basis: bool = True,
         num_pseudo_species: int = None,
@@ -29,7 +28,6 @@ class BPPS(torch.nn.Module):
     ):
         super().__init__()
         self.unique_numbers = unique_numbers
-        self.normalize_layers = normalize_layers
         self.composition_layer = torch.nn.Linear(len(unique_numbers), output_size)
         self.ps_features_layer = PowerSpectrumFeatures(
             all_species=unique_numbers,
@@ -46,42 +44,45 @@ class BPPS(torch.nn.Module):
         layers = []
         for layer_index in range(1, len(layer_size)):
             layers.append(
-                Linear(
-                    layer_size[layer_index - 1],
-                    layer_size[layer_index],
+                LinearMap(
+                    keys=self.unique_numbers,
+                    in_features=layer_size[layer_index - 1],
+                    out_features=layer_size[layer_index],
                     bias=False,
-                    normalize=self.normalize_layers,
                 )
             )
-            layers.append(SiLU(normalize=self.normalize_layers))
-        layers.append(Linear(layer_size[-1], output_size))
+            layers.append(SiLU())
+        layers.append(
+            LinearMap(
+                keys=self.unique_numbers,
+                in_features=layer_size[-1],
+                out_features=output_size,
+                bias=False,
+            )
+        )
         self.nn = torch.nn.Sequential(*layers)
 
     def forward(
         self,
-        positions: torch.Tensor,
-        cells: torch.Tensor,
-        numbers: torch.Tensor,
-        edge_indices: torch.Tensor,
-        edge_shifts: torch.Tensor,
-        ptr: torch.Tensor,
+        positions: Union[torch.Tensor, list[torch.Tensor]],
+        cells: Union[torch.Tensor, list[torch.Tensor]],
+        numbers: Union[torch.Tensor, list[torch.Tensor]],
+        edge_indices: Union[torch.Tensor, list[torch.Tensor]],
+        edge_shifts: Union[torch.Tensor, list[torch.Tensor]],
+        ptr: torch.Tensor = None,
     ):
         compositions = torch.stack(
             get_compositions_from_numbers(numbers, self.unique_numbers, ptr)
         )
         energies = self.composition_layer(compositions)
         ps = self.ps_features_layer(
-            positions, cells, numbers, edge_indices, edge_shifts
-        )
-        psl = self.ps_linear(ps)
-        energies += (
-            metatensor.sum_over_samples(psl.keys_to_samples("a_i"), ["center", "a_i"])
-            .block()
-            .values
+            positions, cells, numbers, edge_indices, edge_shifts, ptr
         )
         psnn = self.nn(ps)
         energies += (
-            metatensor.sum_over_samples(psnn.keys_to_samples("a_i"), ["center", "a_i"])
+            metatensor.torch.operations.sum_over_samples(
+                psnn.keys_to_samples("a_i"), ["center", "a_i"]
+            )
             .block()
             .values
         )

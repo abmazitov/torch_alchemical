@@ -63,13 +63,11 @@ class PowerSpectrumFeatures(torch.nn.Module):
         edge_shifts: Union[torch.Tensor, list[torch.Tensor]],
         ptr: torch.Tensor = None,
     ):
-        if (
-            all(
-                isinstance(x, torch.Tensor)
-                for x in [positions, cells, numbers, edge_indices, edge_shifts]
-            )
-            and ptr is not None
+        if all(
+            isinstance(x, torch.Tensor)
+            for x in [positions, cells, numbers, edge_indices, edge_shifts]
         ):
+            assert ptr is not None
             batch_dict = get_torch_spex_dict(
                 positions, cells, numbers, edge_indices, edge_shifts, ptr
             )

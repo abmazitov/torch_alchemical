@@ -5,7 +5,7 @@ import numpy as np
 from torch_alchemical.data import AtomisticDataset
 from torch_alchemical.transforms import NeighborList
 from torch_geometric.loader import DataLoader
-from torch_alchemical.models import PowerSpectrumModel
+from torch_alchemical.models import PowerSpectrumModel, BPPSModel
 from torch_alchemical.utils import get_autograd_forces
 
 
@@ -27,8 +27,8 @@ class TestModels:
         hypers = json.load(f)
     with open("./tests/configs/ps_model_parameters.json", "r") as f:
         ps_model_parameters = json.load(f)
-    # with open("./tests/configs/alchemical_model_parameters.json", "r") as f:
-    #     alchemical_model_parameters = json.load(f)
+    with open("./tests/configs/bpps_model_parameters.json", "r") as f:
+        bpps_model_parameters = json.load(f)
     transforms = [NeighborList(cutoff_radius=hypers["cutoff radius"])]
     dataset = AtomisticDataset(
         frames, target_properties=["energies", "forces"], transforms=transforms
@@ -54,6 +54,27 @@ class TestModels:
 
         ref_energies = torch.load("./tests/data/hea_bulk_test_ps_energies.pt")
         ref_forces = torch.load("./tests/data/hea_bulk_test_ps_forces.pt")
+        assert torch.allclose(energies, ref_energies)
+        assert torch.allclose(forces, ref_forces)
+
+    def test_bpps_model(self):
+        torch.manual_seed(0)
+        model = BPPSModel(
+            unique_numbers=self.all_species,
+            **self.ps_model_parameters,
+        )
+        energies = model(
+            positions=self.batch.pos,
+            cells=self.batch.cell,
+            numbers=self.batch.numbers,
+            edge_indices=self.batch.edge_index,
+            edge_shifts=self.batch.edge_shift,
+            ptr=self.batch.ptr,
+        )
+        forces = get_autograd_forces(energies, self.batch.pos)[0]
+
+        ref_energies = torch.load("./tests/data/hea_bulk_test_bpps_energies.pt")
+        ref_forces = torch.load("./tests/data/hea_bulk_test_bpps_forces.pt")
         assert torch.allclose(energies, ref_energies)
         assert torch.allclose(forces, ref_forces)
 
