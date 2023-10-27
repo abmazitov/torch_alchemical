@@ -51,12 +51,12 @@ class PowerSpectrumModel(torch.nn.Module):
 
     def forward(
         self,
-        positions: torch.Tensor,
-        cells: torch.Tensor,
-        numbers: torch.Tensor,
-        edge_indices: torch.Tensor,
-        edge_shifts: torch.Tensor,
-        ptr: torch.Tensor,
+        positions: Union[torch.Tensor, list[torch.Tensor]],
+        cells: Union[torch.Tensor, list[torch.Tensor]],
+        numbers: Union[torch.Tensor, list[torch.Tensor]],
+        edge_indices: Union[torch.Tensor, list[torch.Tensor]],
+        edge_shifts: Union[torch.Tensor, list[torch.Tensor]],
+        ptr: torch.Tensor = None,
     ):
         compositions = torch.stack(
             get_compositions_from_numbers(numbers, self.unique_numbers, ptr)

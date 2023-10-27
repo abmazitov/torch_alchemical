@@ -1,12 +1,17 @@
 import torch
+from typing import Union
 
 
 def get_compositions_from_numbers(
-    numbers: torch.Tensor, unique_numbers: torch.Tensor, ptr: torch.Tensor
+    numbers: Union[torch.Tensor, list[torch.Tensor]],
+    unique_numbers: torch.Tensor,
+    ptr: torch.Tensor = None,
 ):
     compositions = []
-    for i in range(len(ptr) - 1):
-        number = numbers[ptr[i] : ptr[i + 1]]
+    if isinstance(numbers, torch.Tensor):
+        assert ptr is not None
+        numbers = [numbers[ptr[i] : ptr[i + 1]] for i in range(len(ptr) - 1)]
+    for number in numbers:
         composition = torch.tensor(
             [(number == species).sum().item() for species in unique_numbers],
             dtype=torch.get_default_dtype(),

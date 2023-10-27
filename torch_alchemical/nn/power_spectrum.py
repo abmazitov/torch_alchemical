@@ -2,7 +2,10 @@ from typing import Union
 import numpy as np
 import torch
 from torch_spex.spherical_expansions import SphericalExpansion
-from torch_alchemical.utils import get_torch_spex_dict
+from torch_alchemical.utils import (
+    get_torch_spex_dict,
+    get_torch_spex_dict_from_data_lists,
+)
 from metatensor.torch import TensorBlock, TensorMap, Labels
 
 
@@ -53,16 +56,30 @@ class PowerSpectrumFeatures(torch.nn.Module):
 
     def forward(
         self,
-        positions: torch.Tensor,
-        cells: torch.Tensor,
-        numbers: torch.Tensor,
-        edge_indices: torch.Tensor,
-        edge_shifts: torch.Tensor,
-        ptr: torch.Tensor,
+        positions: Union[torch.Tensor, list[torch.Tensor]],
+        cells: Union[torch.Tensor, list[torch.Tensor]],
+        numbers: Union[torch.Tensor, list[torch.Tensor]],
+        edge_indices: Union[torch.Tensor, list[torch.Tensor]],
+        edge_shifts: Union[torch.Tensor, list[torch.Tensor]],
+        ptr: torch.Tensor = None,
     ):
-        batch_dict = get_torch_spex_dict(
-            positions, cells, numbers, edge_indices, edge_shifts, ptr
-        )
+        if (
+            all(
+                isinstance(x, torch.Tensor)
+                for x in [positions, cells, numbers, edge_indices, edge_shifts]
+            )
+            and ptr is not None
+        ):
+            batch_dict = get_torch_spex_dict(
+                positions, cells, numbers, edge_indices, edge_shifts, ptr
+            )
+        elif all(
+            isinstance(x, list)
+            for x in [positions, cells, numbers, edge_indices, edge_shifts]
+        ):
+            batch_dict = get_torch_spex_dict_from_data_lists(
+                positions, cells, numbers, edge_indices, edge_shifts
+            )
         spex = self.spex_calculator(
             positions=batch_dict["positions"],
             cells=batch_dict["cells"],
