@@ -29,12 +29,6 @@ def compare_dicts(data_dict, spex_batch):
 
 
 class TestTorchSpexCompatibility:
-    """
-    Test the internal datatype conversion from torch_geometric.data.Batch to a dict
-    representation in torch_spex library, and a following calculation of the SphericalExpansion
-    coefficients.
-    """
-
     device = "cpu"
     frames = read("./tests/data/hea_bulk_test_sample.xyz", index=":")
     all_species = np.unique(np.hstack([frame.numbers for frame in frames]))

@@ -14,16 +14,20 @@ def initialize_composition_layer_weights(model, datamodule):
     compositions = torch.stack(
         get_compositions_from_numbers(numbers, datamodule.unique_numbers, ptr)
     )
-    compositions = torch.cat(
-        (torch.ones(len(dataset)).view(-1, 1), compositions), dim=1
-    )  # bias
+    bias = hasattr(composition_layer, "bias")
+    if bias:
+        compositions = torch.cat(
+            (torch.ones(len(dataset)).view(-1, 1), compositions), dim=1
+        )  # bias
     energies = torch.cat([data.energies.view(1, -1) for data in dataset], dim=0)
     weights = torch.linalg.lstsq(compositions, energies).solution
+    if bias:
+        composition_layer.bias = torch.nn.Parameter(
+            weights[0].contiguous(), requires_grad=True
+        )
+        weights = weights[1:]
     composition_layer.weight = torch.nn.Parameter(
-        weights[1:].T.contiguous(), requires_grad=True
-    )
-    composition_layer.bias = torch.nn.Parameter(
-        weights[0].contiguous(), requires_grad=True
+        weights.T.contiguous(), requires_grad=True
     )
     print("Composition layer weights are initialized with least squares solution")
 

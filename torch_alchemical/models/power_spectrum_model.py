@@ -28,7 +28,9 @@ class PowerSpectrumModel(torch.nn.Module):
     ):
         super().__init__()
         self.unique_numbers = unique_numbers
-        self.composition_layer = torch.nn.Linear(len(unique_numbers), output_size)
+        self.composition_layer = torch.nn.Linear(
+            len(unique_numbers), output_size, bias=False
+        )
         self.ps_features_layer = PowerSpectrumFeatures(
             all_species=unique_numbers,
             cutoff_radius=cutoff,
@@ -44,9 +46,11 @@ class PowerSpectrumModel(torch.nn.Module):
         layer_size = [ps_input_size] + hidden_sizes
         layers = []
         for layer_index in range(1, len(layer_size)):
-            layers.append(Linear(layer_size[layer_index - 1], layer_size[layer_index]))
+            layers.append(
+                Linear(layer_size[layer_index - 1], layer_size[layer_index], bias=False)
+            )
             layers.append(SiLU())
-        layers.append(Linear(layer_size[-1], output_size))
+        layers.append(Linear(layer_size[-1], output_size, bias=False))
         self.nn = torch.nn.Sequential(*layers)
 
     def forward(

@@ -27,8 +27,12 @@ class BPPSModel(torch.nn.Module):
         device: torch.device = None,
     ):
         super().__init__()
+        if isinstance(unique_numbers, np.ndarray):
+            unique_numbers = unique_numbers.tolist()
         self.unique_numbers = unique_numbers
-        self.composition_layer = torch.nn.Linear(len(unique_numbers), output_size)
+        self.composition_layer = torch.nn.Linear(
+            len(unique_numbers), output_size, bias=False
+        )
         self.ps_features_layer = PowerSpectrumFeatures(
             all_species=unique_numbers,
             cutoff_radius=cutoff,
