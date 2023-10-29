@@ -5,7 +5,7 @@ from torch_alchemical.transforms import NeighborList
 from ase.io import read
 from typing import Optional
 import torch
-from torch_geometric.loader import DataListLoader
+from torch_geometric.loader import DataLoader
 
 
 def train_test_split(dataset, lengths, shuffle=True):
@@ -72,7 +72,7 @@ class LitDataModule(pl.LightningDataModule):
         batch_size = self.batch_size
         if self.batch_size == "len":
             batch_size = len(self.train_dataset)
-        dataloader = DataListLoader(
+        dataloader = DataLoader(
             self.train_dataset, batch_size=batch_size, shuffle=self.shuffle
         )
         return dataloader
@@ -81,16 +81,14 @@ class LitDataModule(pl.LightningDataModule):
         batch_size = self.batch_size
         if self.batch_size == "len":
             batch_size = len(self.val_dataset)
-        dataloader = DataListLoader(
-            self.val_dataset, batch_size=batch_size, shuffle=False
-        )
+        dataloader = DataLoader(self.val_dataset, batch_size=batch_size, shuffle=False)
         return dataloader
 
     def test_dataloader(self):
         batch_size = self.batch_size
         if self.batch_size == "len":
             batch_size = len(self.test_dataset)
-        dataloader = DataListLoader(
+        dataloader = DataLoader(
             self.test_dataset, batch_size=batch_size, shuffle=self.shuffle
         )
         return dataloader

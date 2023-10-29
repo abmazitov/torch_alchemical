@@ -2,7 +2,7 @@ from typing import Union
 import numpy as np
 import torch
 from torch_alchemical.utils import get_torch_spex_dict
-from equistore import TensorBlock, TensorMap, Labels
+from metatensor.torch import TensorBlock, TensorMap, Labels
 from torch_spex.radial_basis import RadialBasis
 from torch_spex.spherical_expansions import get_cartesian_vectors
 import copy

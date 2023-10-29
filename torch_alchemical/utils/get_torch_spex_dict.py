@@ -1,9 +1,7 @@
 import torch
-from torch_geometric.data import Data
-from .extract_batch_data import extract_batch_data
 
 
-def get_torch_spex_dict(
+def get_torch_spex_dict_from_data_lists(
     positions: list[torch.Tensor],
     cells: list[torch.Tensor],
     numbers: list[torch.Tensor],
@@ -14,7 +12,7 @@ def get_torch_spex_dict(
     for tensor in positions + cells + numbers + edge_indices + edge_shifts:
         assert tensor.device == device
     species = torch.cat(numbers)
-    cell_shifts = torch.cat(edge_shifts)
+    cell_shifts = torch.cat(edge_shifts).to(torch.int64)
     centers = torch.cat([torch.arange(len(pos), device=device) for pos in positions])
     pairs = torch.cat(edge_indices, dim=1).T
 
@@ -33,6 +31,9 @@ def get_torch_spex_dict(
         torch.tensor([0] + [len(pos) for pos in positions[:-1]], device=device), dim=0
     )
 
+    positions = torch.cat(positions, dim=0)
+    cells = torch.stack(cells)
+
     batch_dict = dict(
         positions=positions,
         cells=cells,
@@ -47,13 +48,40 @@ def get_torch_spex_dict(
     return batch_dict
 
 
-def get_torch_spex_dict_from_batch(batch: list[Data]) -> dict:
-    positions, cells, numbers, edge_indices, edge_shifts = extract_batch_data(batch)
-    batch_dict = get_torch_spex_dict(
+def get_torch_spex_dict(
+    positions: torch.Tensor,
+    cells: torch.Tensor,
+    numbers: torch.Tensor,
+    edge_indices: torch.Tensor,
+    edge_shifts: torch.Tensor,
+    ptr: torch.Tensor,
+):
+    device = positions.device
+    if cells.ndim == 2:
+        cells = cells.reshape(-1, 3, 3)
+    centers = torch.cat(
+        [torch.arange(length, device=device) for length in (ptr[1:] - ptr[:-1])]
+    )
+    pairs = edge_indices.T.clone().to(device)
+    structure_pairs = torch.zeros(len(pairs), device=device, dtype=torch.int64)
+    for i in range(len(ptr) - 1):
+        mask = torch.bitwise_and(pairs < ptr[i + 1], pairs >= ptr[i]).all(dim=1)
+        structure_pairs[mask] = i
+        pairs[mask] -= ptr[i]
+    structure_centers = torch.repeat_interleave(
+        torch.arange(len(ptr) - 1, device=device), ptr[1:] - ptr[:-1]
+    )
+    structure_offsets = ptr[:-1]
+
+    batch_dict = dict(
         positions=positions,
         cells=cells,
-        numbers=numbers,
-        edge_indices=edge_indices,
-        edge_shifts=edge_shifts,
+        species=numbers,
+        cell_shifts=edge_shifts.to(torch.int64),
+        centers=centers,
+        pairs=pairs,
+        structure_centers=structure_centers,
+        structure_pairs=structure_pairs,
+        structure_offsets=structure_offsets,
     )
     return batch_dict

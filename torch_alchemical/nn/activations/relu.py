@@ -1,14 +1,11 @@
 import torch
-from equistore import TensorBlock, TensorMap
+from metatensor.torch import TensorBlock, TensorMap
 
 
 class ReLU(torch.nn.ReLU):
-    def __init__(self):
-        super().__init__()
-
     def forward(self, tensormap: TensorMap) -> TensorMap:
         output_blocks = []
-        for block in tensormap:
+        for block in tensormap.blocks():
             new_block = TensorBlock(
                 values=super().forward(block.values),
                 samples=block.samples,

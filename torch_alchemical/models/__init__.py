@@ -1,4 +1,4 @@
-from .alchemical_model import AlchemicalModel
 from .power_spectrum_model import PowerSpectrumModel
+from .bpps_model import BPPSModel
 
-__all__ = ["AlchemicalModel", "PowerSpectrumModel"]
+__all__ = ["PowerSpectrumModel", "BPPSModel"]

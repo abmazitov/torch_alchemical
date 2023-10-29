@@ -1,4 +1,4 @@
-import equistore
+import metatensor
 import numpy as np
 import torch
 
@@ -66,14 +66,15 @@ class AlchemicalModel(torch.nn.Module):
 
     def forward(
         self,
-        positions: list[torch.Tensor],
-        cells: list[torch.Tensor],
-        numbers: list[torch.Tensor],
-        edge_indices: list[torch.Tensor],
-        edge_shifts: list[torch.Tensor],
+        positions: torch.Tensor,
+        cells: torch.Tensor,
+        numbers: torch.Tensor,
+        edge_indices: torch.Tensor,
+        edge_shifts: torch.Tensor,
+        ptr: torch.Tensor,
     ):
         compositions = torch.stack(
-            get_compositions_from_numbers(numbers, self.unique_numbers)
+            get_compositions_from_numbers(numbers, self.unique_numbers, ptr)
         )
         energies = self.composition_layer(compositions)
         rs = self.rs_features_layer(
@@ -88,7 +89,7 @@ class AlchemicalModel(torch.nn.Module):
 
         for tensormap in [rsl, psl, psnn]:
             energies += (
-                equistore.sum_over_samples(
+                metatensor.sum_over_samples(
                     tensormap.keys_to_samples("a_i"), ["center", "a_i"]
                 )
                 .block()

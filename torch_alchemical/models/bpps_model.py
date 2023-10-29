@@ -5,17 +5,17 @@ import torch
 from typing import Union
 
 from torch_alchemical.nn import (
-    Linear,
+    LinearMap,
     PowerSpectrumFeatures,
     SiLU,
 )
 from torch_alchemical.utils import get_compositions_from_numbers
 
 
-class PowerSpectrumModel(torch.nn.Module):
+class BPPSModel(torch.nn.Module):
     def __init__(
         self,
-        hidden_sizes: list[int],
+        hidden_sizes: int,
         output_size: int,
         unique_numbers: Union[list, np.ndarray],
         cutoff: float,
@@ -27,6 +27,8 @@ class PowerSpectrumModel(torch.nn.Module):
         device: torch.device = None,
     ):
         super().__init__()
+        if isinstance(unique_numbers, np.ndarray):
+            unique_numbers = unique_numbers.tolist()
         self.unique_numbers = unique_numbers
         self.composition_layer = torch.nn.Linear(
             len(unique_numbers), output_size, bias=False
@@ -42,15 +44,26 @@ class PowerSpectrumModel(torch.nn.Module):
             device=device,
         )
         ps_input_size = self.ps_features_layer.num_features
-        self.ps_linear = Linear(ps_input_size, output_size)
         layer_size = [ps_input_size] + hidden_sizes
         layers = []
         for layer_index in range(1, len(layer_size)):
             layers.append(
-                Linear(layer_size[layer_index - 1], layer_size[layer_index], bias=False)
+                LinearMap(
+                    keys=self.unique_numbers,
+                    in_features=layer_size[layer_index - 1],
+                    out_features=layer_size[layer_index],
+                    bias=False,
+                )
             )
             layers.append(SiLU())
-        layers.append(Linear(layer_size[-1], output_size, bias=False))
+        layers.append(
+            LinearMap(
+                keys=self.unique_numbers,
+                in_features=layer_size[-1],
+                out_features=output_size,
+                bias=False,
+            )
+        )
         self.nn = torch.nn.Sequential(*layers)
 
     def forward(
@@ -68,14 +81,6 @@ class PowerSpectrumModel(torch.nn.Module):
         energies = self.composition_layer(compositions)
         ps = self.ps_features_layer(
             positions, cells, numbers, edge_indices, edge_shifts, ptr
-        )
-        psl = self.ps_linear(ps)
-        energies += (
-            metatensor.torch.operations.sum_over_samples(
-                psl.keys_to_samples("a_i"), ["center", "a_i"]
-            )
-            .block()
-            .values
         )
         psnn = self.nn(ps)
         energies += (

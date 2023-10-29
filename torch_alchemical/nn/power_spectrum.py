@@ -2,8 +2,11 @@ from typing import Union
 import numpy as np
 import torch
 from torch_spex.spherical_expansions import SphericalExpansion
-from torch_alchemical.utils import get_torch_spex_dict
-from equistore import TensorBlock, TensorMap, Labels
+from torch_alchemical.utils import (
+    get_torch_spex_dict,
+    get_torch_spex_dict_from_data_lists,
+)
+from metatensor.torch import TensorBlock, TensorMap, Labels
 
 
 class PowerSpectrumFeatures(torch.nn.Module):
@@ -19,6 +22,8 @@ class PowerSpectrumFeatures(torch.nn.Module):
         device: torch.device = None,
     ):
         super().__init__()
+        if isinstance(all_species, np.ndarray):
+            all_species = all_species.tolist()
         self.all_species = all_species
         self.cutoff_radius = cutoff_radius
         self.basis_cutoff = basis_cutoff
@@ -51,16 +56,39 @@ class PowerSpectrumFeatures(torch.nn.Module):
 
     def forward(
         self,
-        positions: list[torch.Tensor],
-        cells: list[torch.Tensor],
-        numbers: list[torch.Tensor],
-        edge_indices: list[torch.Tensor],
-        edge_shifts: list[torch.Tensor],
+        positions: Union[torch.Tensor, list[torch.Tensor]],
+        cells: Union[torch.Tensor, list[torch.Tensor]],
+        numbers: Union[torch.Tensor, list[torch.Tensor]],
+        edge_indices: Union[torch.Tensor, list[torch.Tensor]],
+        edge_shifts: Union[torch.Tensor, list[torch.Tensor]],
+        ptr: torch.Tensor = None,
     ):
-        batch_dict = get_torch_spex_dict(
-            positions, cells, numbers, edge_indices, edge_shifts
+        if all(
+            isinstance(x, torch.Tensor)
+            for x in [positions, cells, numbers, edge_indices, edge_shifts]
+        ):
+            assert ptr is not None
+            batch_dict = get_torch_spex_dict(
+                positions, cells, numbers, edge_indices, edge_shifts, ptr
+            )
+        elif all(
+            isinstance(x, list)
+            for x in [positions, cells, numbers, edge_indices, edge_shifts]
+        ):
+            batch_dict = get_torch_spex_dict_from_data_lists(
+                positions, cells, numbers, edge_indices, edge_shifts
+            )
+        spex = self.spex_calculator(
+            positions=batch_dict["positions"],
+            cells=batch_dict["cells"],
+            species=batch_dict["species"],
+            cell_shifts=batch_dict["cell_shifts"],
+            centers=batch_dict["centers"],
+            pairs=batch_dict["pairs"],
+            structure_centers=batch_dict["structure_centers"],
+            structure_pairs=batch_dict["structure_pairs"],
+            structure_offsets=batch_dict["structure_offsets"],
         )
-        spex = self.spex_calculator(**batch_dict)
         power_spectrum = self.ps_calculator(spex)
         return power_spectrum
 
@@ -82,14 +110,14 @@ class PowerSpectrum(torch.nn.Module):
         self.l_max = l_max
         self.all_species = all_species
 
-    def forward(self, spex):
-        keys = []
-        blocks = []
+    def forward(self, spex: TensorMap):
+        keys: list[list[int]] = []
+        blocks: list[TensorBlock] = []
         for a_i in self.all_species:
             ps_values_ai = []
             for l in range(self.l_max + 1):
-                cg = 1.0 / np.sqrt(2 * l + 1)
-                block_ai_l = spex.block(lam=l, a_i=a_i)
+                cg = (2 * l + 1) ** (-0.5)
+                block_ai_l = spex.block({"lam": l, "a_i": a_i})
                 c_ai_l = block_ai_l.values
 
                 # same as this:
@@ -99,13 +127,15 @@ class PowerSpectrum(torch.nn.Module):
                     c_ai_l.unsqueeze(2) * c_ai_l.unsqueeze(3), dim=1
                 )
 
-                ps_ai_l = ps_ai_l.reshape(c_ai_l.shape[0], c_ai_l.shape[2] ** 2)
+                ps_ai_l = ps_ai_l.reshape(
+                    c_ai_l.shape[0], c_ai_l.shape[2] * c_ai_l.shape[2]
+                )
                 ps_values_ai.append(ps_ai_l)
             ps_values_ai = torch.concatenate(ps_values_ai, dim=-1)
 
             block = TensorBlock(
                 values=ps_values_ai,
-                samples=block_ai_l.samples,
+                samples=spex.block({"lam": 0, "a_i": a_i}).samples,
                 components=[],
                 properties=Labels.range("property", ps_values_ai.shape[-1]),
             )
@@ -115,7 +145,7 @@ class PowerSpectrum(torch.nn.Module):
         power_spectrum = TensorMap(
             keys=Labels(
                 names=("a_i",),
-                values=np.array(keys),  # .reshape((-1, 2)),
+                values=torch.tensor(keys),  # .reshape((-1, 2)),
             ),
             blocks=blocks,
         )
