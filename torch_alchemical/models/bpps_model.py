@@ -1,4 +1,3 @@
-import metatensor
 import numpy as np
 import torch
 
@@ -82,12 +81,15 @@ class BPPSModel(torch.nn.Module):
         ps = self.ps_features_layer(
             positions, cells, numbers, edge_indices, edge_shifts, ptr
         )
-        psnn = self.nn(ps)
-        energies += (
-            metatensor.torch.operations.sum_over_samples(
-                psnn.keys_to_samples("a_i"), ["center", "a_i"]
-            )
-            .block()
-            .values
+        psnn = self.nn(ps).keys_to_samples("a_i")
+        index_add(
+            target=energies,
+            index=psnn.block().samples["structure"],
+            source=psnn.block().values,
         )
         return energies
+
+
+def index_add(target, index, source):
+    for idx in torch.unique(index):
+        target[idx] += source[index == idx].sum(dim=0)

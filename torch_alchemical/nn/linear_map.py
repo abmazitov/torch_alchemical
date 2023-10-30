@@ -17,9 +17,9 @@ class LinearMap(torch.nn.Module):
             block = tensormap.block({"a_i": key})
             labels = Labels(
                 names=["out_features_idx"],
-                values=torch.arange(linear.out_features, dtype=torch.int64).reshape(
-                    -1, 1
-                ),
+                values=torch.arange(
+                    linear.out_features, dtype=torch.int64, device=block.values.device
+                ).reshape(-1, 1),
             )
             new_block = TensorBlock(
                 values=linear.forward(block.values),

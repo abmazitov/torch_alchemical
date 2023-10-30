@@ -8,9 +8,9 @@ class Linear(torch.nn.Linear):
         for block in tensormap.blocks():
             labels = Labels(
                 names=["out_features_idx"],
-                values=torch.arange(self.out_features, dtype=torch.int64).reshape(
-                    -1, 1
-                ),
+                values=torch.arange(
+                    self.out_features, dtype=torch.int64, device=block.values.device
+                ).reshape(-1, 1),
             )
             new_block = TensorBlock(
                 values=super().forward(block.values),
