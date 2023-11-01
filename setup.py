@@ -14,7 +14,7 @@ setup(
         "wandb",
         "ruamel.yaml",
         "torch_spex@git+https://github.com/lab-cosmo/torch_spex.git@80cf96b",
-        "metatensor[torch] @ https://github.com/lab-cosmo/metatensor/archive/0436e27.zip",
+        "metatensor[torch]@git+https://github.com/lab-cosmo/metatensor/archive/0436e27.zip",
     ],
     dependency_links=["https://download.pytorch.org/whl/cpu"],
 )
