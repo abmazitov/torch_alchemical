@@ -21,17 +21,17 @@ class TestNNLayers:
         with torch.no_grad():
             linear(self.ps)
 
-    # def test_linear_map(self):
-    #     linear_map = torch.jit.script(
-    #         nn.LinearMap(
-    #             keys=self.ps.keys.values.flatten().tolist(),
-    #             in_features=self.ps_input_size,
-    #             out_features=1,
-    #             bias=False,
-    #         )
-    #     )
-    #     with torch.no_grad():
-    #         linear_map(self.ps)
+    def test_linear_map(self):
+        linear_map = torch.jit.script(
+            nn.LinearMap(
+                keys=self.ps.keys.values.flatten().tolist(),
+                in_features=self.ps_input_size,
+                out_features=1,
+                bias=False,
+            )
+        )
+        with torch.no_grad():
+            linear_map(self.ps)
 
     def test_layer_norm(self):
         norm = torch.jit.script(nn.LayerNorm(self.ps_input_size))
@@ -82,18 +82,18 @@ class TestModels:
             ptr=self.batch.ptr,
         )
 
-    # def test_bpps_model(self):
-    #     model = torch.jit.script(
-    #         BPPSModel(
-    #             unique_numbers=self.all_species,
-    #             **self.bpps_model_parameters,
-    #         )
-    #     )
-    #     model.forward(
-    #         positions=self.batch.pos,
-    #         cells=self.batch.cell,
-    #         numbers=self.batch.numbers,
-    #         edge_indices=self.batch.edge_index,
-    #         edge_shifts=self.batch.edge_shift,
-    #         ptr=self.batch.ptr,
-    #     )
+    def test_bpps_model(self):
+        model = torch.jit.script(
+            BPPSModel(
+                unique_numbers=self.all_species,
+                **self.bpps_model_parameters,
+            )
+        )
+        model.forward(
+            positions=self.batch.pos,
+            cells=self.batch.cell,
+            numbers=self.batch.numbers,
+            edge_indices=self.batch.edge_index,
+            edge_shifts=self.batch.edge_shift,
+            ptr=self.batch.ptr,
+        )

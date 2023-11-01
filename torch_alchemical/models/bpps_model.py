@@ -63,7 +63,7 @@ class BPPSModel(torch.nn.Module):
                 bias=False,
             )
         )
-        self.nn = torch.nn.Sequential(*layers)
+        self.nn = torch.nn.ModuleList(layers)
 
     def forward(
         self,
@@ -83,7 +83,9 @@ class BPPSModel(torch.nn.Module):
         ps = self.ps_features_layer(
             positions, cells, numbers, edge_indices, edge_shifts, ptr
         )
-        psnn = self.nn(ps).keys_to_samples("a_i")
+        for layer in self.nn:
+            ps = layer(ps)
+        psnn = ps.keys_to_samples("a_i")
         energies.index_add_(
             dim=0,
             index=psnn.block().samples.column("structure"),

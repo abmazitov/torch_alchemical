@@ -169,19 +169,19 @@ class LitModel(pl.LightningModule):
             )
             torch.save(
                 self.predicted_energies,
-                os.path.join(self.logger.experiment.dir, "predicted_energies.pt"),
+                os.path.join(self.logger.experiment.dir, "val_predicted_energies.pt"),
             )
             torch.save(
                 self.predicted_forces,
-                os.path.join(self.logger.experiment.dir, "predicted_forces.pt"),
+                os.path.join(self.logger.experiment.dir, "val_predicted_energies.pt"),
             )
             torch.save(
                 self.target_energies,
-                os.path.join(self.logger.experiment.dir, "target_energies.pt"),
+                os.path.join(self.logger.experiment.dir, "val_predicted_energies.pt"),
             )
             torch.save(
                 self.target_forces,
-                os.path.join(self.logger.experiment.dir, "target_forces.pt"),
+                os.path.join(self.logger.experiment.dir, "val_predicted_energies.pt"),
             )
 
     def configure_optimizers(self):
