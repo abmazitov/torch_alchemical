@@ -14,7 +14,7 @@ def initialize_composition_layer_weights(model, datamodule):
     compositions = torch.stack(
         get_compositions_from_numbers(numbers, datamodule.unique_numbers, ptr)
     )
-    bias = hasattr(composition_layer, "bias")
+    bias = composition_layer.bias is not None
     if bias:
         compositions = torch.cat(
             (torch.ones(len(dataset)).view(-1, 1), compositions), dim=1
