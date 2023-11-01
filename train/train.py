@@ -8,6 +8,8 @@ import torch
 import ruamel.yaml as yaml
 import argparse
 import lightning.pytorch as pl
+import os
+import datetime
 
 
 torch.set_default_dtype(torch.float64)
@@ -44,7 +46,14 @@ if __name__ == "__main__":
         pl.callbacks.EarlyStopping(**early_stopping_callback),
         pl.callbacks.ModelCheckpoint(**checkpoint_callback),
     ]
-    logger = pl.loggers.WandbLogger(**parameters["logging"])
+    logname = parameters["logging"].pop("name")
+    logname += f"_{datetime.now().strftime('%d-%m-%Y--%H:%M:%S')}"
+    logdir = parameters["logging"].pop("save_dir")
+    if not os.path.exists(logdir):
+        os.makedirs(logdir)
+    logger = pl.loggers.WandbLogger(
+        name=logname, save_dir=logdir, **parameters["logging"]
+    )
     logger.experiment.config.update(parameters)
 
     trainer = pl.Trainer(
