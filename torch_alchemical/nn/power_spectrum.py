@@ -159,7 +159,7 @@ class PowerSpectrum(torch.nn.Module):
             keys=Labels(
                 names=("a_i",),
                 values=torch.tensor(keys),  # .reshape((-1, 2)),
-            ).to(ps_values_ai.device),
+            ).to(blocks[0].properties.values.device),
             blocks=blocks,
         )
 
