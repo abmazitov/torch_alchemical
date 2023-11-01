@@ -9,7 +9,7 @@ import ruamel.yaml as yaml
 import argparse
 import lightning.pytorch as pl
 import os
-import datetime
+from datetime import datetime
 
 
 torch.set_default_dtype(torch.float64)
