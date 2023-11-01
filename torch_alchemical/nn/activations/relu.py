@@ -2,12 +2,16 @@ import torch
 from metatensor.torch import TensorBlock, TensorMap
 
 
-class ReLU(torch.nn.ReLU):
+class ReLU(torch.nn.Module):
+    def __init__(self, *args, **kwargs):
+        super().__init__()
+        self.relu = torch.nn.ReLU(*args, **kwargs)
+
     def forward(self, tensormap: TensorMap) -> TensorMap:
-        output_blocks = []
+        output_blocks: list[TensorBlock] = []
         for block in tensormap.blocks():
             new_block = TensorBlock(
-                values=super().forward(block.values),
+                values=self.relu(block.values),
                 samples=block.samples,
                 components=block.components,
                 properties=block.properties,

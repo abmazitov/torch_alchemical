@@ -1,4 +1,4 @@
-from typing import Union
+from typing import Union, Optional
 import numpy as np
 import torch
 from torch_spex.spherical_expansions import SphericalExpansion
@@ -61,23 +61,31 @@ class PowerSpectrumFeatures(torch.nn.Module):
         numbers: Union[torch.Tensor, list[torch.Tensor]],
         edge_indices: Union[torch.Tensor, list[torch.Tensor]],
         edge_shifts: Union[torch.Tensor, list[torch.Tensor]],
-        ptr: torch.Tensor = None,
+        ptr: Optional[torch.Tensor] = None,
     ):
-        if all(
-            isinstance(x, torch.Tensor)
-            for x in [positions, cells, numbers, edge_indices, edge_shifts]
+        if (
+            isinstance(positions, torch.Tensor)
+            and isinstance(cells, torch.Tensor)
+            and isinstance(numbers, torch.Tensor)
+            and isinstance(edge_indices, torch.Tensor)
+            and isinstance(edge_shifts, torch.Tensor)
         ):
             assert ptr is not None
             batch_dict = get_torch_spex_dict(
                 positions, cells, numbers, edge_indices, edge_shifts, ptr
             )
-        elif all(
-            isinstance(x, list)
-            for x in [positions, cells, numbers, edge_indices, edge_shifts]
+        elif (
+            isinstance(positions, list)
+            and isinstance(cells, list)
+            and isinstance(numbers, list)
+            and isinstance(edge_indices, list)
+            and isinstance(edge_shifts, list)
         ):
             batch_dict = get_torch_spex_dict_from_data_lists(
                 positions, cells, numbers, edge_indices, edge_shifts
             )
+        else:
+            raise ValueError()
         spex = self.spex_calculator(
             positions=batch_dict["positions"],
             cells=batch_dict["cells"],

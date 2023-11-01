@@ -4,14 +4,14 @@ import torch
 from torch_alchemical.data import AtomisticDataset
 from torch_alchemical.transforms import NeighborList
 from torch_geometric.loader import DataLoader
-from torch_alchemical.models import PowerSpectrumModel
+from torch_alchemical.models import PowerSpectrumModel, BPPSModel
 from ase.io import read
 import json
 import numpy as np
-import pytest
+
+torch.set_default_dtype(torch.float64)
 
 
-@pytest.mark.skip(reason="Not implemented yet")
 class TestNNLayers:
     ps = metatensor.torch.load("./tests/data/ps_test_data.npz")
     ps_input_size = ps.block(0).values.shape[-1]
@@ -20,6 +20,18 @@ class TestNNLayers:
         linear = torch.jit.script(nn.Linear(self.ps_input_size, 1))
         with torch.no_grad():
             linear(self.ps)
+
+    def test_linear_map(self):
+        linear_map = torch.jit.script(
+            nn.LinearMap(
+                keys=self.ps.keys.values.flatten().tolist(),
+                in_features=self.ps_input_size,
+                out_features=1,
+                bias=False,
+            )
+        )
+        with torch.no_grad():
+            linear_map(self.ps)
 
     def test_layer_norm(self):
         norm = torch.jit.script(nn.LayerNorm(self.ps_input_size))
@@ -37,7 +49,6 @@ class TestNNLayers:
             silu(self.ps)
 
 
-@pytest.mark.skip(reason="Not implemented yet")
 class TestModels:
     device = "cpu"
     frames = read("./tests/data/hea_bulk_test_sample.xyz", index=":")
@@ -46,8 +57,8 @@ class TestModels:
         hypers = json.load(f)
     with open("./tests/configs/ps_model_parameters.json", "r") as f:
         ps_model_parameters = json.load(f)
-    # with open("./tests/configs/alchemical_model_parameters.json", "r") as f:
-    #     alchemical_model_parameters = json.load(f)
+    with open("./tests/configs/bpps_model_parameters.json", "r") as f:
+        bpps_model_parameters = json.load(f)
     transforms = [NeighborList(cutoff_radius=hypers["cutoff radius"])]
     dataset = AtomisticDataset(
         frames, target_properties=["energies", "forces"], transforms=transforms
@@ -60,6 +71,22 @@ class TestModels:
             PowerSpectrumModel(
                 unique_numbers=self.all_species,
                 **self.ps_model_parameters,
+            )
+        )
+        model.forward(
+            positions=self.batch.pos,
+            cells=self.batch.cell,
+            numbers=self.batch.numbers,
+            edge_indices=self.batch.edge_index,
+            edge_shifts=self.batch.edge_shift,
+            ptr=self.batch.ptr,
+        )
+
+    def test_bpps_model(self):
+        model = torch.jit.script(
+            BPPSModel(
+                unique_numbers=self.all_species,
+                **self.bpps_model_parameters,
             )
         )
         model.forward(

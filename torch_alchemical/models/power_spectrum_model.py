@@ -1,7 +1,7 @@
 import numpy as np
 import torch
 
-from typing import Union
+from typing import Union, Optional
 
 from torch_alchemical.nn import (
     Linear,
@@ -41,7 +41,7 @@ class PowerSpectrumModel(torch.nn.Module):
             device=device,
         )
         ps_input_size = self.ps_features_layer.num_features
-        self.ps_linear = Linear(ps_input_size, output_size)
+        self.ps_linear = Linear(ps_input_size, output_size, bias=False)
         layer_size = [ps_input_size] + hidden_sizes
         layers = []
         for layer_index in range(1, len(layer_size)):
@@ -50,7 +50,7 @@ class PowerSpectrumModel(torch.nn.Module):
             )
             layers.append(SiLU())
         layers.append(Linear(layer_size[-1], output_size, bias=False))
-        self.nn = torch.nn.Sequential(*layers)
+        self.nn = torch.nn.ModuleList(layers)
 
     def forward(
         self,
@@ -59,30 +59,29 @@ class PowerSpectrumModel(torch.nn.Module):
         numbers: Union[torch.Tensor, list[torch.Tensor]],
         edge_indices: Union[torch.Tensor, list[torch.Tensor]],
         edge_shifts: Union[torch.Tensor, list[torch.Tensor]],
-        ptr: torch.Tensor = None,
+        ptr: Optional[torch.Tensor] = None,
     ):
         compositions = torch.stack(
-            get_compositions_from_numbers(numbers, self.unique_numbers, ptr)
+            get_compositions_from_numbers(
+                numbers, self.unique_numbers, ptr, self.composition_layer.weight.dtype
+            )
         )
         energies = self.composition_layer(compositions)
         ps = self.ps_features_layer(
             positions, cells, numbers, edge_indices, edge_shifts, ptr
         )
         psl = self.ps_linear(ps).keys_to_samples("a_i")
-        index_add(
-            target=energies,
-            index=psl.block().samples["structure"],
+        energies.index_add_(
+            dim=0,
+            index=psl.block().samples.column("structure"),
             source=psl.block().values,
         )
-        psnn = self.nn(ps).keys_to_samples("a_i")
-        index_add(
-            target=energies,
-            index=psnn.block().samples["structure"],
+        for layer in self.nn:
+            ps = layer(ps)
+        psnn = ps.keys_to_samples("a_i")
+        energies.index_add_(
+            dim=0,
+            index=psnn.block().samples.column("structure"),
             source=psnn.block().values,
         )
         return energies
-
-
-def index_add(target, index, source):
-    for idx in torch.unique(index):
-        target[idx] += source[index == idx].sum(dim=0)

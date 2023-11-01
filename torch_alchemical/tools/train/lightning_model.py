@@ -1,5 +1,6 @@
 import lightning.pytorch as pl
 import torch
+import os
 from torch_alchemical.nn import WeightedMSELoss, MAELoss
 from torch_alchemical.utils import get_autograd_forces
 from torch_alchemical.tools.logging.wandb import log_wandb_data
@@ -158,13 +159,28 @@ class LitModel(pl.LightningModule):
         print(f"Forces MAE: Val {val_forces_mae:.3f}")
         if isinstance(self.logger, pl.loggers.WandbLogger):
             log_wandb_data(
-                self.logger,
                 self.predicted_energies,
                 self.predicted_forces,
                 self.target_energies,
                 self.target_forces,
                 val_energies_mae,
                 val_forces_mae,
+            )
+            torch.save(
+                self.predicted_energies,
+                os.path.join(self.logger.experiment.dir, "val_predicted_energies.pt"),
+            )
+            torch.save(
+                self.predicted_forces,
+                os.path.join(self.logger.experiment.dir, "val_predicted_forces.pt"),
+            )
+            torch.save(
+                self.target_energies,
+                os.path.join(self.logger.experiment.dir, "val_target_energies.pt"),
+            )
+            torch.save(
+                self.target_forces,
+                os.path.join(self.logger.experiment.dir, "val_target_forces.pt"),
             )
 
     def configure_optimizers(self):

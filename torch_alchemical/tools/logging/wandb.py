@@ -22,7 +22,6 @@ def get_wandb_datatables(
 
 
 def log_wandb_data(
-    logger,
     predicted_energies,
     predicted_forces,
     target_energies,

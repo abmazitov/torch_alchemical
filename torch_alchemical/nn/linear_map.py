@@ -11,10 +11,9 @@ class LinearMap(torch.nn.Module):
         )
 
     def forward(self, tensormap: TensorMap) -> TensorMap:
-        output_blocks = []
-        for key in self.keys:
-            linear = self.linear[str(key)]
-            block = tensormap.block({"a_i": key})
+        output_blocks: list[TensorBlock] = []
+        for key, linear in self.linear.items():
+            block = tensormap.block({"a_i": int(key)})
             labels = Labels(
                 names=["out_features_idx"],
                 values=torch.arange(
