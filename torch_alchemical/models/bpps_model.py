@@ -1,7 +1,7 @@
 import numpy as np
 import torch
 
-from typing import Union
+from typing import Union, Optional
 
 from torch_alchemical.nn import (
     LinearMap,
@@ -72,24 +72,21 @@ class BPPSModel(torch.nn.Module):
         numbers: Union[torch.Tensor, list[torch.Tensor]],
         edge_indices: Union[torch.Tensor, list[torch.Tensor]],
         edge_shifts: Union[torch.Tensor, list[torch.Tensor]],
-        ptr: torch.Tensor = None,
+        ptr: Optional[torch.Tensor] = None,
     ):
         compositions = torch.stack(
-            get_compositions_from_numbers(numbers, self.unique_numbers, ptr)
+            get_compositions_from_numbers(
+                numbers, self.unique_numbers, ptr, self.composition_layer.weight.dtype
+            )
         )
         energies = self.composition_layer(compositions)
         ps = self.ps_features_layer(
             positions, cells, numbers, edge_indices, edge_shifts, ptr
         )
         psnn = self.nn(ps).keys_to_samples("a_i")
-        index_add(
-            target=energies,
-            index=psnn.block().samples["structure"],
+        energies.index_add_(
+            dim=0,
+            index=psnn.block().samples.column("structure"),
             source=psnn.block().values,
         )
         return energies
-
-
-def index_add(target, index, source):
-    for idx in torch.unique(index):
-        target[idx] += source[index == idx].sum(dim=0)

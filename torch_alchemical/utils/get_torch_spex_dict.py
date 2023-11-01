@@ -1,4 +1,5 @@
 import torch
+from typing import Dict
 
 
 def get_torch_spex_dict_from_data_lists(
@@ -7,7 +8,7 @@ def get_torch_spex_dict_from_data_lists(
     numbers: list[torch.Tensor],
     edge_indices: list[torch.Tensor],
     edge_shifts: list[torch.Tensor],
-) -> dict:
+) -> Dict[str, torch.Tensor]:
     device = positions[0].device
     for tensor in positions + cells + numbers + edge_indices + edge_shifts:
         assert tensor.device == device
@@ -55,7 +56,7 @@ def get_torch_spex_dict(
     edge_indices: torch.Tensor,
     edge_shifts: torch.Tensor,
     ptr: torch.Tensor,
-):
+) -> Dict[str, torch.Tensor]:
     device = positions.device
     if cells.ndim == 2:
         cells = cells.reshape(-1, 3, 3)

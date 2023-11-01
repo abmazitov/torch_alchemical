@@ -2,18 +2,24 @@ import torch
 from metatensor.torch import Labels, TensorBlock, TensorMap
 
 
-class Linear(torch.nn.Linear):
+class Linear(torch.nn.Module):
+    def __init__(self, *args, **kwargs):
+        super().__init__()
+        self.linear = torch.nn.Linear(*args, **kwargs)
+
     def forward(self, tensormap: TensorMap) -> TensorMap:
-        output_blocks = []
+        output_blocks: list[TensorBlock] = []
         for block in tensormap.blocks():
             labels = Labels(
                 names=["out_features_idx"],
                 values=torch.arange(
-                    self.out_features, dtype=torch.int64, device=block.values.device
+                    self.linear.out_features,
+                    dtype=torch.int64,
+                    device=block.values.device,
                 ).reshape(-1, 1),
             )
             new_block = TensorBlock(
-                values=super().forward(block.values),
+                values=self.linear(block.values),
                 samples=block.samples,
                 components=block.components,
                 properties=labels,
