@@ -4,6 +4,7 @@ import os
 from torch_alchemical.nn import WeightedMSELoss, MAELoss
 from torch_alchemical.utils import get_autograd_forces
 from torch_alchemical.tools.logging.wandb import log_wandb_data
+from torch_alchemical.optim import SdLBFGS
 
 
 class LitModel(pl.LightningModule):
@@ -12,15 +13,17 @@ class LitModel(pl.LightningModule):
         model,
         energies_weight: float,
         forces_weight: float,
-        lr: float = 1e-3,
-        weight_decay: float = 1e-5,
+        optimizer: str = "adam",
+        optimizer_params: dict = None,
     ):
         super().__init__()
         self.model = model
         self.energies_weight = energies_weight
         self.forces_weight = forces_weight
-        self.lr = lr
-        self.weight_decay = weight_decay
+        self.optimizer = optimizer
+        self.optimizer_params = optimizer_params if optimizer_params else {}
+        if self.optimizer == "lbfgs":
+            self.automatic_optimization = False
 
     def on_train_epoch_start(self):
         self.train_energies_mae = 0.0
@@ -41,22 +44,59 @@ class LitModel(pl.LightningModule):
         return predicted_energies, predicted_forces, target_energies, target_forces
 
     def training_step(self, batch, batch_idx):
-        (
-            predicted_energies,
-            predicted_forces,
-            target_energies,
-            target_forces,
-        ) = self.forward(batch)
+        if self.optimizer == "adam":
+            (
+                predicted_energies,
+                predicted_forces,
+                target_energies,
+                target_forces,
+            ) = self.forward(batch)
 
-        loss_fn = WeightedMSELoss(
-            energies_weight=self.energies_weight, forces_weight=self.forces_weight
-        )
-        loss = loss_fn(
-            predicted_energies=predicted_energies,
-            predicted_forces=predicted_forces,
-            target_energies=target_energies,
-            target_forces=target_forces,
-        )
+            loss_fn = WeightedMSELoss(
+                energies_weight=self.energies_weight, forces_weight=self.forces_weight
+            )
+            loss = loss_fn(
+                predicted_energies=predicted_energies,
+                predicted_forces=predicted_forces,
+                target_energies=target_energies,
+                target_forces=target_forces,
+            )
+        elif self.optimizer == "lbfgs":
+            optimizer = self.optimizers()
+
+            def closure():
+                optimizer.zero_grad()
+                (
+                    predicted_energies,
+                    predicted_forces,
+                    target_energies,
+                    target_forces,
+                ) = self.forward(batch)
+                loss_fn = WeightedMSELoss(
+                    energies_weight=self.energies_weight,
+                    forces_weight=self.forces_weight,
+                )
+                loss = loss_fn(
+                    predicted_energies=predicted_energies,
+                    predicted_forces=predicted_forces,
+                    target_energies=target_energies,
+                    target_forces=target_forces,
+                )
+                self.manual_backward(loss)
+                return loss, (
+                    predicted_energies,
+                    predicted_forces,
+                    target_energies,
+                    target_forces,
+                )
+
+            loss, (
+                predicted_energies,
+                predicted_forces,
+                target_energies,
+                target_forces,
+            ) = optimizer.step(closure)
+
         self.log(
             "train_loss",
             loss,
@@ -184,7 +224,10 @@ class LitModel(pl.LightningModule):
             )
 
     def configure_optimizers(self):
-        optimizer = torch.optim.Adam(
-            self.parameters(), lr=self.lr, weight_decay=self.weight_decay
-        )
+        if self.optimizer == "adam":
+            optimizer = torch.optim.Adam(self.parameters(), **self.optimizer_params)
+        elif self.optimizer == "lbfgs":
+            optimizer = SdLBFGS(self.parameters(), **self.optimizer_params)
+        else:
+            raise ValueError()
         return optimizer
