@@ -3,12 +3,14 @@ from torch_alchemical.tools.train import LitDataModule, LitModel
 from torch_alchemical.tools.train.initialize import (
     initialize_combining_matrix,
     initialize_composition_layer_weights,
+    initialize_energies_scale_factor,
 )
 import torch
 import ruamel.yaml as yaml
 import argparse
 import lightning.pytorch as pl
 import os
+import numpy as np
 from datetime import datetime
 
 
@@ -26,19 +28,31 @@ if __name__ == "__main__":
     datamodule.prepare_data()
     datamodule.setup()
 
+    basis_normalization_factor = np.mean(
+        [
+            data.edge_index.shape[1] / data.pos.shape[0]
+            for data in datamodule.train_dataset
+        ]
+    )
+
     model = PowerSpectrumModel(
-        unique_numbers=datamodule.unique_numbers, **parameters["model"]
+        unique_numbers=datamodule.unique_numbers,
+        basis_normalization_factor=basis_normalization_factor,
+        **parameters["model"],
     )
 
     restart = parameters["litmodel"].pop("restart")
     if restart:
+        model = torch.jit.script(model)
         litmodel = LitModel.load_from_checkpoint(
             restart, model=model, **parameters["litmodel"]
         )
     else:
+        model = torch.jit.script(model)
+        initialize_composition_layer_weights(model, datamodule, trainable=False)
+        initialize_energies_scale_factor(model, datamodule, trainable=False)
+        initialize_combining_matrix(model, datamodule, trainable=True)
         litmodel = LitModel(model=model, **parameters["litmodel"])
-        initialize_composition_layer_weights(litmodel.model, datamodule)
-        initialize_combining_matrix(litmodel.model, datamodule)
 
     early_stopping_callback = parameters["trainer"].pop("early_stopping_callback")
     checkpoint_callback = parameters["trainer"].pop("checkpoint_callback")
