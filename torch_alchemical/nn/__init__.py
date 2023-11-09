@@ -1,5 +1,6 @@
 from .activations.relu import ReLU
 from .activations.silu import SiLU
+from .activations.selu import SELU
 
 # from .graph.gat_conv import GATConv
 # from .graph.gcn_conv import GCNConv
@@ -18,6 +19,7 @@ __all__ = [
     "LinearMap",
     "ReLU",
     "SiLU",
+    "SELU",
     "PowerSpectrumFeatures",
     # "RadialSpectrumFeatures",
     # "GCNConv",
