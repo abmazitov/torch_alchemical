@@ -6,9 +6,13 @@ class LinearMap(torch.nn.Module):
     def __init__(self, keys, *args, **kwargs):
         super().__init__()
         self.keys = keys
-        self.linear = torch.nn.ModuleDict(
-            {str(key): torch.nn.Linear(*args, **kwargs) for key in keys}
-        )
+        self.linear = torch.nn.ModuleDict()
+        for key in keys:
+            layer = torch.nn.Linear(*args, **kwargs)
+            layer.weight.data.normal_(mean=0.0, std=layer.in_features ** (-0.5))
+            if layer.bias is not None:
+                layer.bias.data.zero_()
+            self.linear[str(key)] = layer
 
     def forward(self, tensormap: TensorMap) -> TensorMap:
         output_blocks: list[TensorBlock] = []
@@ -21,7 +25,7 @@ class LinearMap(torch.nn.Module):
                 ).reshape(-1, 1),
             )
             new_block = TensorBlock(
-                values=linear.forward(block.values),
+                values=linear(block.values),
                 samples=block.samples,
                 components=block.components,
                 properties=labels,

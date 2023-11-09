@@ -121,6 +121,7 @@ class PowerSpectrum(torch.nn.Module):
     def forward(self, spex: TensorMap):
         keys: list[list[int]] = []
         blocks: list[TensorBlock] = []
+        device = spex.block(0).values.device
         for a_i in self.all_species:
             ps_values_ai = []
             for l in range(self.l_max + 1):
@@ -159,7 +160,7 @@ class PowerSpectrum(torch.nn.Module):
             keys=Labels(
                 names=("a_i",),
                 values=torch.tensor(keys),  # .reshape((-1, 2)),
-            ).to(blocks[0].properties.values.device),
+            ).to(device),
             blocks=blocks,
         )
 

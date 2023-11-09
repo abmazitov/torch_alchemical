@@ -20,6 +20,7 @@ class PowerSpectrumModel(torch.nn.Module):
         cutoff: float,
         basis_cutoff_power_spectrum: float,
         radial_basis_type: str,
+        energies_scale_factor: float = 1.0,
         basis_normalization_factor: float = None,
         trainable_basis: bool = True,
         num_pseudo_species: int = None,
@@ -27,6 +28,7 @@ class PowerSpectrumModel(torch.nn.Module):
     ):
         super().__init__()
         self.unique_numbers = unique_numbers
+        self.energies_scale_factor = energies_scale_factor
         self.composition_layer = torch.nn.Linear(
             len(unique_numbers), output_size, bias=False
         )
@@ -71,7 +73,8 @@ class PowerSpectrumModel(torch.nn.Module):
             positions, cells, numbers, edge_indices, edge_shifts, ptr
         )
         psl = self.ps_linear(ps).keys_to_samples("a_i")
-        energies.index_add_(
+        energies_psl = torch.zeros_like(energies)
+        energies_psl.index_add_(
             dim=0,
             index=psl.block().samples.column("structure"),
             source=psl.block().values,
@@ -79,9 +82,12 @@ class PowerSpectrumModel(torch.nn.Module):
         for layer in self.nn:
             ps = layer(ps)
         psnn = ps.keys_to_samples("a_i")
-        energies.index_add_(
+        energies_psnn = torch.zeros_like(energies)
+        energies_psnn.index_add_(
             dim=0,
             index=psnn.block().samples.column("structure"),
             source=psnn.block().values,
         )
+        energies += (energies_psl + energies_psnn) * self.energies_scale_factor
+
         return energies

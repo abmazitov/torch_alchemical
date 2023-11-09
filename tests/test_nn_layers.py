@@ -63,6 +63,14 @@ class TestNNLayers:
             ps_silu, ref_ps_silu, atol=1e-5, rtol=1e-5
         )
 
+    def test_selu(self):
+        selu = nn.SELU()
+        ps_selu = selu(self.ps)
+        ref_ps_selu = metatensor.torch.load("./tests/data/selu_ps_test_data.npz")
+        assert metatensor.operations.allclose(
+            ps_selu, ref_ps_selu, atol=1e-5, rtol=1e-5
+        )
+
     def test_loss_functions(self):
         ref_energies = torch.load("./tests/data/hea_bulk_test_ps_energies.pt")
         ref_forces = torch.load("./tests/data/hea_bulk_test_ps_forces.pt")

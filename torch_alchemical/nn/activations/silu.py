@@ -6,12 +6,13 @@ class SiLU(torch.nn.Module):
     def __init__(self, *args, **kwargs):
         super().__init__()
         self.silu = torch.nn.SiLU(*args, **kwargs)
+        self.scaling = 1.6741360556061238  # 1 / 0.6
 
     def forward(self, tensormap: TensorMap) -> TensorMap:
         output_blocks: list[TensorBlock] = []
         for block in tensormap.blocks():
             new_block = TensorBlock(
-                values=self.silu(block.values),
+                values=self.silu(block.values) * self.scaling,
                 samples=block.samples,
                 components=block.components,
                 properties=block.properties,

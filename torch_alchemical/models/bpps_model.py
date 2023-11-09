@@ -20,6 +20,7 @@ class BPPSModel(torch.nn.Module):
         cutoff: float,
         basis_cutoff_power_spectrum: float,
         radial_basis_type: str,
+        energies_scale_factor: float = 1.0,
         basis_normalization_factor: float = None,
         trainable_basis: bool = True,
         num_pseudo_species: int = None,
@@ -29,6 +30,7 @@ class BPPSModel(torch.nn.Module):
         if isinstance(unique_numbers, np.ndarray):
             unique_numbers = unique_numbers.tolist()
         self.unique_numbers = unique_numbers
+        self.energies_scale_factor = energies_scale_factor
         self.composition_layer = torch.nn.Linear(
             len(unique_numbers), output_size, bias=False
         )
@@ -86,9 +88,11 @@ class BPPSModel(torch.nn.Module):
         for layer in self.nn:
             ps = layer(ps)
         psnn = ps.keys_to_samples("a_i")
-        energies.index_add_(
+        energies_psnn = torch.zeros_like(energies)
+        energies_psnn.index_add_(
             dim=0,
             index=psnn.block().samples.column("structure"),
             source=psnn.block().values,
         )
+        energies += energies_psnn * self.energies_scale_factor
         return energies
