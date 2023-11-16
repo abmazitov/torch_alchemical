@@ -13,6 +13,9 @@ from .power_spectrum import PowerSpectrumFeatures
 from .normalization.layer_norm import LayerNorm
 from .loss_functions.mae import MAELoss, WeightedMAELoss
 from .loss_functions.mse import MSELoss, WeightedMSELoss
+from .embeddings.rbf_embedding import RBFEmbedding
+from .embeddings.tensor_embedding import TensorEmbedding
+from .graph.tensor_conv import TensorConv
 
 __all__ = [
     "Linear",
@@ -30,4 +33,7 @@ __all__ = [
     "WeightedMAELoss",
     "MSELoss",
     "WeightedMSELoss",
+    "TensorEmbedding",
+    "RBFEmbedding",
+    "TensorConv",
 ]
