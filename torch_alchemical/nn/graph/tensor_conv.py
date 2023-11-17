@@ -73,6 +73,13 @@ class TensorConv(MessagePassing):
                 for _ in range(6)
             ]
         )
+        self.reset_parameters()
+
+    def reset_parameters(self):
+        for layer in self.radial_layer:
+            layer.reset_parameters()
+        for layer in self.linear:
+            layer.reset_parameters()
 
     def message(
         self, X: torch.Tensor, edge_index: torch.Tensor, edge_attrs: torch.Tensor
@@ -80,11 +87,25 @@ class TensorConv(MessagePassing):
         X_j = X.index_select(0, edge_index[1]) * edge_attrs[..., None, None, :]
         return X_j
 
+    # def message_and_aggregate(
+    #     self, X: torch.Tensor, edge_index: torch.Tensor, edge_attrs: torch.Tensor
+    # ):
+    #     X_j = X.index_select(0, edge_index[1]) * edge_attrs[..., None, None, :]
+    #     X_agg = torch.zeros_like(X)
+    #     X_agg.index_add_(0, edge_index[0], X_j)
+    #     return X_agg
+
     def update(self, X_aggr: torch.Tensor, X_old: torch.Tensor, Y: torch.Tensor):
         M = X_aggr.sum(dim=-1)
         X = Y @ M + M @ Y
-        X = decomposition_transform(X).transpose(1, -2)
-        X = X / (torch.linalg.norm(X, dim=(-1, -2)) + 1.0)[..., None, None]
+        X = decomposition_transform(X)
+        X = (
+            X
+            / (torch.linalg.norm(X, dim=(-1, -2), ord="fro") ** 2 + 1.0)[
+                ..., None, None
+            ]
+        )
+        X = X.transpose(1, -2)
         for i, linear in enumerate(self.linear[3:]):
             X[..., i] = linear(X[..., i])
         X = X.transpose(1, -2)
@@ -103,8 +124,13 @@ class TensorConv(MessagePassing):
         edge_attrs = (
             self.cutoff_function(edge_weights).view(-1, 1) * edge_attrs
         ).reshape(-1, self.hidden_size, 3)
+        X = (
+            X
+            / (torch.linalg.norm(X, dim=(-1, -2), ord="fro") ** 2 + 1.0)[
+                ..., None, None
+            ]
+        )
         X_old = X.clone()
-        X = X / (torch.linalg.norm(X, dim=(-1, -2)) + 1.0)[..., None, None]
         X = decomposition_transform(X).transpose(1, -2)
         for i, linear in enumerate(self.linear[:3]):
             X[..., i] = linear(X[..., i])

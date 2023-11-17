@@ -7,4 +7,6 @@ class CosineCutoff(torch.nn.Module):
         self.cutoff = cutoff
 
     def forward(self, distances):
-        return 0.5 * (torch.cos(distances * torch.pi / self.cutoff) + 1)
+        cutoff_distances = 0.5 * (torch.cos(distances * torch.pi / self.cutoff) + 1)
+        cutoff_distances[distances > self.cutoff] = 0
+        return cutoff_distances

@@ -79,9 +79,9 @@ class TensorEmbedding(MessagePassing):
         self.chemical_linear = torch.nn.Linear(
             2 * hidden_size, hidden_size, bias=True, dtype=dtype, device=device
         )
+        self.layer_norm = torch.nn.LayerNorm(hidden_size)
         self.normalization_layer = torch.nn.ModuleList(
             [
-                torch.nn.LayerNorm(hidden_size),
                 torch.nn.Linear(
                     hidden_size, 2 * hidden_size, bias=True, dtype=dtype, device=device
                 ),
@@ -92,9 +92,9 @@ class TensorEmbedding(MessagePassing):
                     dtype=dtype,
                     device=device,
                 ),
-                torch.nn.SiLU(),
             ]
         )
+        self.act = torch.nn.SiLU()
         self.linear = torch.nn.ModuleList(
             [
                 torch.nn.Linear(
@@ -103,6 +103,16 @@ class TensorEmbedding(MessagePassing):
                 for _ in range(3)
             ]
         )
+
+        self.reset_parameters()
+
+    def reset_parameters(self):
+        self.chemical_embedding.reset_parameters()
+        self.chemical_linear.reset_parameters()
+        for layer in self.normalization_layer:
+            layer.reset_parameters()
+        for layer in self.linear:
+            layer.reset_parameters()
 
     def get_chemical_messages(self, numbers: torch.Tensor, edge_index: torch.Tensor):
         mapped_numbers = torch.tensor(
@@ -128,7 +138,7 @@ class TensorEmbedding(MessagePassing):
         I_j = (
             self.radial_linears[0](edge_attrs)[..., None, None]
             * X
-            * torch.eye(3, 3)[None, None, ...]
+            * torch.eye(3, 3, device=X.device, dtype=X.dtype)[None, None, ...]
         )
         A_j = (
             self.radial_linears[1](edge_attrs)[..., None, None]
@@ -160,13 +170,15 @@ class TensorEmbedding(MessagePassing):
             cartesian_vectors=cartesian_vectors,
         )
         norm = torch.linalg.norm(X.sum(dim=-1), dim=(-2, -1), ord="fro") ** 2
+        norm = self.layer_norm(norm)
         for layer in self.normalization_layer:
-            norm = layer(norm)
+            norm = self.act(layer(norm))
         norm = norm.reshape(-1, self.hidden_size, 3)
-        X = (X * norm[..., None, None, :]).transpose(1, -2)
+        X = X.transpose(1, -2)
         for i, layer in enumerate(self.linear):
             X[..., i] = layer(X[..., i])
-        X = X.transpose(1, -2).sum(dim=-1)
+        X = X.transpose(1, -2)
+        X = torch.sum(X * norm[..., None, None, :], dim=-1)
         return X
 
     def __repr__(self):
