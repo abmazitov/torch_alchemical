@@ -34,7 +34,9 @@ def initialize_composition_layer_weights(model, datamodule, trainable=False):
     print("Composition layer weights are initialized with least squares solution")
 
 
-def initialize_energies_scale_factor(model, datamodule, trainable=False):
+def initialize_energies_rescaling(
+    model, datamodule, rescale_target_data=False, trainable_scale_factor=False
+):
     assert hasattr(model, "composition_layer")
     assert hasattr(model, "energies_scale_factor")
     dataset = datamodule.train_dataset
@@ -47,8 +49,16 @@ def initialize_energies_scale_factor(model, datamodule, trainable=False):
     energies = torch.cat([data.energies.view(1, -1) for data in dataset], dim=0)
     composition_energies = composition_layer(compositions)
     scale = torch.std(energies - composition_energies)
-    model.energies_scale_factor = torch.nn.Parameter(scale, requires_grad=trainable)
+    model.energies_scale_factor = torch.nn.Parameter(
+        scale, requires_grad=trainable_scale_factor
+    )
     print("Energies scale is initialized with shifted energies standard deviation")
+    if rescale_target_data:
+        composition_energies = composition_energies.squeeze()
+        for i, data in enumerate(dataset):
+            data.energies = (data.energies - composition_energies[i]) / scale
+            data.forces = data.forces / scale
+        print("Training energies and forces are shifted and rescaled")
 
 
 def initialize_combining_matrix(model, datamodule, trainable=True):

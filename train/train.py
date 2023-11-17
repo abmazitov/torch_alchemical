@@ -48,10 +48,10 @@ if __name__ == "__main__":
             restart, model=model, **parameters["litmodel"]
         )
     else:
-        model = torch.jit.script(model)
         initialize_composition_layer_weights(model, datamodule, trainable=False)
         initialize_energies_scale_factor(model, datamodule, trainable=False)
         initialize_combining_matrix(model, datamodule, trainable=True)
+        model = torch.jit.script(model)
         litmodel = LitModel(model=model, **parameters["litmodel"])
 
     early_stopping_callback = parameters["trainer"].pop("early_stopping_callback")

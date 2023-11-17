@@ -145,10 +145,10 @@ class LitModel(pl.LightningModule):
         )
         self.val_energies_mae += val_energies_mae
         self.val_forces_mae += val_forces_mae
-        self.predicted_energies.append(predicted_energies.detach())
-        self.predicted_forces.append(predicted_forces.detach())
-        self.target_energies.append(target_energies.detach())
-        self.target_forces.append(target_forces.detach())
+        self.predicted_energies.append(predicted_energies.cpu().detach())
+        self.predicted_forces.append(predicted_forces.cpu().detach())
+        self.target_energies.append(target_energies.cpu().detach())
+        self.target_forces.append(target_forces.cpu().detach())
 
     def on_validation_epoch_end(self):
         num_batches = len(self.trainer.datamodule.val_dataloader())
@@ -187,4 +187,13 @@ class LitModel(pl.LightningModule):
         optimizer = torch.optim.Adam(
             self.parameters(), lr=self.lr, weight_decay=self.weight_decay
         )
-        return optimizer
+        scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
+            optimizer, patience=10, factor=0.5, verbose=True
+        )
+        return {
+            "optimizer": optimizer,
+            "lr_scheduler": {
+                "scheduler": scheduler,
+                "monitor": "val_energies_mae",
+            },
+        }
