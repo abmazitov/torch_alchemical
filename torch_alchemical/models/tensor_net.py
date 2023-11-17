@@ -104,7 +104,7 @@ class TensorNet(torch.nn.Module):
                 edge_attrs=edge_attrs,
             )
         X = decomposition_transform(X)
-        X = torch.linalg.norm(X, dim=(-1, -2))
+        X = torch.linalg.norm(X, dim=(-1, -2), ord="fro") ** 2
         X = self.layer_norm(torch.cat(X.unbind(dim=-1), dim=-1))
         for layer in self.linear[:-1]:
             X = self.act(layer(X))
