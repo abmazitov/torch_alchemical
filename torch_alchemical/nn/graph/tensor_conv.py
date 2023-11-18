@@ -87,13 +87,12 @@ class TensorConv(MessagePassing):
         X_j = X.index_select(0, edge_index[1]) * edge_attrs[..., None, None, :]
         return X_j
 
-    # def message_and_aggregate(
-    #     self, X: torch.Tensor, edge_index: torch.Tensor, edge_attrs: torch.Tensor
-    # ):
-    #     X_j = X.index_select(0, edge_index[1]) * edge_attrs[..., None, None, :]
-    #     X_agg = torch.zeros_like(X)
-    #     X_agg.index_add_(0, edge_index[0], X_j)
-    #     return X_agg
+    def aggregate(self, X_j: torch.Tensor, index: torch.Tensor, dim_size: int):
+        X_agg = torch.zeros(
+            dim_size, *X_j.shape[1:], dtype=X_j.dtype, device=X_j.device
+        )
+        X_agg = X_agg.index_add(0, index, X_j)
+        return X_agg
 
     def update(self, X_aggr: torch.Tensor, X_old: torch.Tensor, Y: torch.Tensor):
         M = X_aggr.sum(dim=-1)
@@ -136,7 +135,14 @@ class TensorConv(MessagePassing):
             X[..., i] = linear(X[..., i])
         X = X.transpose(1, -2)
         Y = X.sum(dim=-1)
-        X = self.propagate(edge_index, X=X, X_old=X_old, Y=Y, edge_attrs=edge_attrs)
+        X = self.propagate(
+            edge_index,
+            X=X,
+            X_old=X_old,
+            Y=Y,
+            edge_attrs=edge_attrs,
+            size=(X.size(0), X.size(1)),
+        )
         return X
 
     def __repr__(self):

@@ -153,6 +153,13 @@ class TensorEmbedding(MessagePassing):
         X_j = torch.stack((I_j, A_j, S_j), dim=-1)
         return X_j
 
+    def aggregate(self, X_j: torch.Tensor, index: torch.Tensor, dim_size: int):
+        X_agg = torch.zeros(
+            dim_size, *X_j.shape[1:], dtype=X_j.dtype, device=X_j.device
+        )
+        X_agg = X_agg.index_add(0, index, X_j)
+        return X_agg
+
     def forward(
         self,
         numbers: torch.Tensor,
@@ -168,6 +175,7 @@ class TensorEmbedding(MessagePassing):
             edge_weights=edge_weights,
             edge_attrs=edge_attrs,
             cartesian_vectors=cartesian_vectors,
+            size=(numbers.size(0), X.size(1)),
         )
         norm = torch.linalg.norm(X.sum(dim=-1), dim=(-2, -1), ord="fro") ** 2
         norm = self.layer_norm(norm)
