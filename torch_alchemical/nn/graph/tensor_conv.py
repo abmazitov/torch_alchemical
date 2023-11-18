@@ -87,10 +87,8 @@ class TensorConv(MessagePassing):
         X_j = X.index_select(0, edge_index[1]) * edge_attrs[..., None, None, :]
         return X_j
 
-    def aggregate(self, X_j: torch.Tensor, index: torch.Tensor, dim_size: int):
-        X_agg = torch.zeros(
-            dim_size, *X_j.shape[1:], dtype=X_j.dtype, device=X_j.device
-        )
+    def aggregate(self, X_j: torch.Tensor, index: torch.Tensor, size_j: int):
+        X_agg = torch.zeros(size_j, *X_j.shape[1:], dtype=X_j.dtype, device=X_j.device)
         X_agg = X_agg.index_add(0, index, X_j)
         return X_agg
 
