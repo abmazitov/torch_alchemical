@@ -23,4 +23,4 @@ def get_list_of_unique_atomic_numbers(
             unique_numbers.extend(frame.species)
         else:
             raise TypeError(f"Unknown frame type: {type(frame)}")
-    return np.unique(unique_numbers)
+    return np.unique(unique_numbers).tolist()

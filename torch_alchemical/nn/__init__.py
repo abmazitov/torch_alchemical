@@ -13,6 +13,7 @@ from .power_spectrum import PowerSpectrumFeatures
 from .normalization.layer_norm import LayerNorm
 from .loss_functions.mae import MAELoss, WeightedMAELoss
 from .loss_functions.mse import MSELoss, WeightedMSELoss
+from .loss_functions.sse import SSELoss, WeightedSSELoss
 
 __all__ = [
     "Linear",
@@ -30,4 +31,6 @@ __all__ = [
     "WeightedMAELoss",
     "MSELoss",
     "WeightedMSELoss",
+    "SSELoss",
+    "WeightedSSELoss",
 ]
