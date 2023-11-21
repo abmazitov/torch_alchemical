@@ -56,36 +56,16 @@ class PowerSpectrumFeatures(torch.nn.Module):
 
     def forward(
         self,
-        positions: Union[torch.Tensor, list[torch.Tensor]],
-        cells: Union[torch.Tensor, list[torch.Tensor]],
-        numbers: Union[torch.Tensor, list[torch.Tensor]],
-        edge_indices: Union[torch.Tensor, list[torch.Tensor]],
-        edge_shifts: Union[torch.Tensor, list[torch.Tensor]],
-        ptr: Optional[torch.Tensor] = None,
+        positions: torch.Tensor,
+        cells: torch.Tensor,
+        numbers: torch.Tensor,
+        edge_indices: torch.Tensor,
+        edge_offsets: torch.Tensor,
+        batch: torch.Tensor,
     ):
-        if (
-            isinstance(positions, torch.Tensor)
-            and isinstance(cells, torch.Tensor)
-            and isinstance(numbers, torch.Tensor)
-            and isinstance(edge_indices, torch.Tensor)
-            and isinstance(edge_shifts, torch.Tensor)
-        ):
-            assert ptr is not None
-            batch_dict = get_torch_spex_dict(
-                positions, cells, numbers, edge_indices, edge_shifts, ptr
-            )
-        elif (
-            isinstance(positions, list)
-            and isinstance(cells, list)
-            and isinstance(numbers, list)
-            and isinstance(edge_indices, list)
-            and isinstance(edge_shifts, list)
-        ):
-            batch_dict = get_torch_spex_dict_from_data_lists(
-                positions, cells, numbers, edge_indices, edge_shifts
-            )
-        else:
-            raise ValueError()
+        batch_dict = get_torch_spex_dict(
+            positions, cells, numbers, edge_indices, edge_offsets, batch
+        )
         spex = self.spex_calculator(
             positions=batch_dict["positions"],
             cells=batch_dict["cells"],

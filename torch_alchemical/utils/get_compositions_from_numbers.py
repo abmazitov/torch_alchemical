@@ -5,13 +5,20 @@ from typing import Union, Optional
 def get_compositions_from_numbers(
     numbers: Union[torch.Tensor, list[torch.Tensor]],
     unique_numbers: list[int],
-    ptr: Optional[torch.Tensor] = None,
+    batch: Optional[torch.Tensor] = None,
     dtype: Optional[torch.dtype] = None,
 ) -> list[torch.Tensor]:
-    dtype = dtype if dtype is not None else torch.float64
     compositions: list[torch.Tensor] = []
     if isinstance(numbers, torch.Tensor):
-        assert ptr is not None
+        assert batch is not None
+        device = numbers.device
+        _, counts = torch.unique(batch, return_counts=True)
+    else:
+        device = numbers[0].device
+        counts = torch.tensor([len(number) for number in numbers], device=device)
+    dtype = dtype if dtype is not None else torch.float64
+    ptr = torch.cat([torch.tensor([0], device=device), torch.cumsum(counts, dim=0)])
+    if isinstance(numbers, torch.Tensor):
         numbers = [numbers[ptr[i] : ptr[i + 1]] for i in range(len(ptr) - 1)]
     unique_numbers = torch.tensor(
         unique_numbers, dtype=numbers[0].dtype, device=numbers[0].device

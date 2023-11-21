@@ -7,6 +7,7 @@ from .activations.selu import SELU
 # from .graph.transformer_conv import TransformerConv
 from .linear import Linear
 from .linear_map import LinearMap
+from .alchemical_contraction import AlchemicalContraction
 from .power_spectrum import PowerSpectrumFeatures
 
 # from .radial_spectrum import RadialSpectrumFeatures
@@ -33,4 +34,5 @@ __all__ = [
     "WeightedMSELoss",
     "SSELoss",
     "WeightedSSELoss",
+    "AlchemicalContraction",
 ]

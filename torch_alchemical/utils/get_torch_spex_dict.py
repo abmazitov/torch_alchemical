@@ -55,22 +55,23 @@ def get_torch_spex_dict(
     numbers: torch.Tensor,
     edge_indices: torch.Tensor,
     edge_shifts: torch.Tensor,
-    ptr: torch.Tensor,
+    batch: torch.Tensor,
 ) -> Dict[str, torch.Tensor]:
     device = positions.device
+    batches, counts = torch.unique(batch, return_counts=True)
+    num_batches = len(batches)
+    ptr = torch.cat([torch.tensor([0], device=device), torch.cumsum(counts, dim=0)])
     if cells.ndim == 2:
         cells = cells.reshape(-1, 3, 3)
-    centers = torch.cat(
-        [torch.arange(length, device=device) for length in (ptr[1:] - ptr[:-1])]
-    )
+    centers = torch.cat([torch.arange(length, device=device) for length in counts])
     pairs = edge_indices.T.clone().to(device)
     structure_pairs = torch.zeros(len(pairs), device=device, dtype=torch.int64)
-    for i in range(len(ptr) - 1):
+    for i in range(num_batches):
         mask = torch.bitwise_and(pairs < ptr[i + 1], pairs >= ptr[i]).all(dim=1)
         structure_pairs[mask] = i
         pairs[mask] -= ptr[i]
     structure_centers = torch.repeat_interleave(
-        torch.arange(len(ptr) - 1, device=device), ptr[1:] - ptr[:-1]
+        torch.arange(num_batches, device=device), ptr[1:] - ptr[:-1]
     )
     structure_offsets = ptr[:-1]
 
