@@ -1,9 +1,10 @@
 import numpy as np
 import torch
 
-from typing import Union, Optional
+from typing import Union
 
 from torch_alchemical.nn import (
+    LayerNorm,
     AlchemicalContraction,
     PowerSpectrumFeatures,
     SiLU,
@@ -21,6 +22,8 @@ class AlchemicalModel(torch.nn.Module):
         basis_cutoff_power_spectrum: float,
         radial_basis_type: str,
         energies_scale_factor: float = 1.0,
+        normalize: bool = True,
+        average_number_of_atoms: float = None,
         basis_normalization_factor: float = None,
         trainable_basis: bool = True,
         num_pseudo_species: int = None,
@@ -30,6 +33,9 @@ class AlchemicalModel(torch.nn.Module):
         if isinstance(unique_numbers, np.ndarray):
             unique_numbers = unique_numbers.tolist()
         self.unique_numbers = unique_numbers
+        self.normalize = normalize
+        self.num_pseudo_species = num_pseudo_species
+        self.average_number_of_atoms = average_number_of_atoms
         self.energies_scale_factor = energies_scale_factor
         self.composition_layer = torch.nn.Linear(
             len(unique_numbers), output_size, bias=False
@@ -45,9 +51,15 @@ class AlchemicalModel(torch.nn.Module):
             device=device,
         )
         ps_input_size = self.ps_features_layer.num_features
-        combination_matrix = (
-            self.ps_features_layer.spex_calculator.vector_expansion_calculator.radial_basis_calculator.combination_matrix
-        )
+        if self.normalize:
+            self.layer_norm = LayerNorm(ps_input_size)
+            combination_matrix = (
+                self.ps_features_layer.spex_calculator.vector_expansion_calculator.radial_basis_calculator.combination_matrix.linear_layer.weight
+            )
+        else:
+            combination_matrix = (
+                self.ps_features_layer.spex_calculator.vector_expansion_calculator.radial_basis_calculator.combination_matrix.weight
+            )
         layer_size = [ps_input_size] + hidden_sizes
         layers = []
         for layer_index in range(1, len(layer_size)):
@@ -74,31 +86,33 @@ class AlchemicalModel(torch.nn.Module):
 
     def forward(
         self,
-        positions: Union[torch.Tensor, list[torch.Tensor]],
-        cells: Union[torch.Tensor, list[torch.Tensor]],
-        numbers: Union[torch.Tensor, list[torch.Tensor]],
-        edge_indices: Union[torch.Tensor, list[torch.Tensor]],
-        edge_shifts: Union[torch.Tensor, list[torch.Tensor]],
-        ptr: Optional[torch.Tensor] = None,
+        positions: torch.Tensor,
+        cells: torch.Tensor,
+        numbers: torch.Tensor,
+        edge_indices: torch.Tensor,
+        edge_offsets: torch.Tensor,
+        batch: torch.Tensor,
     ):
-        compositions = torch.stack(
-            get_compositions_from_numbers(
-                numbers, self.unique_numbers, ptr, self.composition_layer.weight.dtype
-            )
-        )
-        energies = self.composition_layer(compositions)
         ps = self.ps_features_layer(
-            positions, cells, numbers, edge_indices, edge_shifts, ptr
+            positions, cells, numbers, edge_indices, edge_offsets, batch
         )
+        if self.normalize:
+            ps = self.layer_norm(ps)
         for layer in self.nn:
             ps = layer(ps)
         psnn = ps.keys_to_samples("a_i")
-        energies_psnn = torch.zeros_like(energies)
-        energies_psnn.index_add_(
-            dim=0,
-            index=psnn.block().samples.column("structure"),
-            source=psnn.block().values,
+        features = psnn.block().values
+        energies = torch.zeros(
+            len(torch.unique(batch)), 1, device=features.device, dtype=features.dtype
         )
+        energies.index_add_(
+            dim=0,
+            index=batch,
+            source=features,
+        )
+        if self.normalize:
+            energies = energies / torch.sqrt(self.num_pseudo_species)
+            energies = energies / self.average_number_of_atoms
         if self.training:
             return energies
         else:
@@ -106,7 +120,7 @@ class AlchemicalModel(torch.nn.Module):
                 get_compositions_from_numbers(
                     numbers,
                     self.unique_numbers,
-                    ptr,
+                    batch,
                     self.composition_layer.weight.dtype,
                 )
             )
