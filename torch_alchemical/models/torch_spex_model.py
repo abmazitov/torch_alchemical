@@ -180,7 +180,7 @@ class TorchSpexModel(torch.nn.Module):
                 get_compositions_from_numbers(
                     numbers,
                     self.unique_numbers,
-                    ptr,
+                    batch,
                     self.composition_layer.weight.dtype,
                 )
             )
