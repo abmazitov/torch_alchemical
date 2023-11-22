@@ -43,31 +43,10 @@ class TestCalculators:
                 cells=self.batch.cell,
                 numbers=self.batch.numbers,
                 edge_indices=self.batch.edge_index,
-                edge_shifts=self.batch.edge_shift,
-                ptr=self.batch.ptr,
+                edge_offsets=self.batch.edge_offsets,
+                batch=self.batch.batch,
             )
 
         ref_ps = metatensor.torch.load("./tests/data/ps_calculator_test_data.npz")
 
         assert metatensor.operations.allclose(ps, ref_ps, atol=1e-5, rtol=1e-5)
-
-    # def test_rs_features(self):
-    #     rs_calculator = RadialSpectrumFeatures(
-    #     all_species=all_species,
-    #     cutoff_radius=hypers["cutoff radius"],
-    #     basis_cutoff=hypers["radial basis"]["E_max"],
-    #     radial_basis_type=hypers["radial basis"]["type"],
-    #     trainable_basis=hypers["radial basis"]["mlp"],
-    #     device=device,
-    # )
-    #     positions, cells, numbers, edge_index, edge_shift = extract_batch_data(
-    #         self.batch
-    #     )
-    #     with torch.no_grad():
-    #         rs = self.rs_calculator(positions, cells, numbers, edge_index, edge_shift)
-
-    #     ref_rs = metatensor.core.io.load_custom_array(
-    #         "./tests/data/rs_test_data.npz", metatensor.core.io.create_torch_array
-    #     )
-
-    #     assert metatensor.operations.allclose(rs, ref_rs, atol=1e-5, rtol=1e-5)

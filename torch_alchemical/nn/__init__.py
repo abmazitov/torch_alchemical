@@ -7,7 +7,7 @@ from .activations.selu import SELU
 # from .graph.transformer_conv import TransformerConv
 from .linear import Linear
 from .linear_map import LinearMap
-from .alchemical_contraction import AlchemicalContraction
+from .multi_channel_linear import MultiChannelLinear
 from .power_spectrum import PowerSpectrumFeatures
 
 # from .radial_spectrum import RadialSpectrumFeatures
@@ -15,6 +15,7 @@ from .normalization.layer_norm import LayerNorm
 from .loss_functions.mae import MAELoss, WeightedMAELoss
 from .loss_functions.mse import MSELoss, WeightedMSELoss
 from .loss_functions.sse import SSELoss, WeightedSSELoss
+from .embeddings.alchemical_embedding import AlchemicalEmbedding
 
 __all__ = [
     "Linear",
@@ -34,5 +35,6 @@ __all__ = [
     "WeightedMSELoss",
     "SSELoss",
     "WeightedSSELoss",
-    "AlchemicalContraction",
+    "MultiChannelLinear",
+    "AlchemicalEmbedding",
 ]

@@ -2,13 +2,10 @@ from ase.io import read
 import json
 import torch
 import numpy as np
-from torch_alchemical.utils import (
-    get_torch_spex_dict,
-    get_torch_spex_dict_from_data_lists,
-)
+from torch_alchemical.utils import get_torch_spex_dict
 from torch_alchemical.data import AtomisticDataset
 from torch_alchemical.transforms import NeighborList
-from torch_geometric.loader import DataListLoader, DataLoader
+from torch_geometric.loader import DataLoader
 from torch.utils.data import DataLoader as SpexDataLoader
 from torch_spex.structures import InMemoryDataset, TransformerNeighborList, collate_nl
 from torch_spex.spherical_expansions import SphericalExpansion
@@ -38,9 +35,7 @@ class TestTorchSpexCompatibility:
     dataset = AtomisticDataset(
         frames, target_properties=["energies"], transforms=transforms
     )
-    datalistloader = DataListLoader(dataset, batch_size=len(frames), shuffle=False)
     dataloader = DataLoader(dataset, batch_size=len(frames), shuffle=False)
-    batch_list = next(iter(datalistloader))
     batch = next(iter(dataloader))
 
     spex_transformers = [TransformerNeighborList(cutoff=hypers["cutoff radius"])]
@@ -56,20 +51,10 @@ class TestTorchSpexCompatibility:
             cells=self.batch.cell,
             numbers=self.batch.numbers,
             edge_indices=self.batch.edge_index,
-            edge_shifts=self.batch.edge_shift,
-            ptr=self.batch.ptr,
+            edge_offsets=self.batch.edge_offsets,
+            batch=self.batch.batch,
         )
         compare_dicts(data_dict, self.spex_batch)
-
-    def test_data_list_to_torch_spex_dict_conversion(self):
-        data_list_dict = get_torch_spex_dict_from_data_lists(
-            positions=[data.pos for data in self.batch_list],
-            cells=[data.cell for data in self.batch_list],
-            numbers=[data.numbers for data in self.batch_list],
-            edge_indices=[data.edge_index for data in self.batch_list],
-            edge_shifts=[data.edge_shift for data in self.batch_list],
-        )
-        compare_dicts(data_list_dict, self.spex_batch)
 
     def test_spherical_expansion_coefficients(self):
         data_dict = get_torch_spex_dict(
@@ -77,8 +62,8 @@ class TestTorchSpexCompatibility:
             cells=self.batch.cell,
             numbers=self.batch.numbers,
             edge_indices=self.batch.edge_index,
-            edge_shifts=self.batch.edge_shift,
-            ptr=self.batch.ptr,
+            edge_offsets=self.batch.edge_offsets,
+            batch=self.batch.batch,
         )
         calculator = SphericalExpansion(
             hypers=self.hypers, all_species=self.all_species, device=self.device

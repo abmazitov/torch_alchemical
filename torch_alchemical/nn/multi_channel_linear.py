@@ -1,48 +1,50 @@
 import torch
-from metatensor.torch import TensorBlock, TensorMap, Labels
+from metatensor.torch import Labels, TensorBlock, TensorMap
 
 
-class AlchemicalContraction(torch.nn.Module):
+class MultiChannelLinear(torch.nn.Module):
     def __init__(
         self,
-        unique_numbers: list[int],
-        contraction_matrix: torch.Tensor,
         in_features: int,
         out_features: int,
+        num_channels: int,
         bias: bool = True,
         device: torch.device = None,
         dtype: torch.dtype = None,
     ):
         super().__init__()
-        self.unique_numbers = unique_numbers
-        self.contraction_matrix = contraction_matrix
         self.in_features = in_features
         self.out_features = out_features
-        self.alchemical_features = len(contraction_matrix)
+        self.num_channels = num_channels
+        self.device = device
+        self.dtype = dtype
         self.weight = torch.nn.Parameter(
-            torch.zeros(
-                self.alchemical_features,
-                in_features,
-                out_features,
+            torch.randn(
+                (num_channels, in_features, out_features),
+                device=device,
+                dtype=dtype,
             )
         )
-        self.bias = torch.nn.Parameter(
-            torch.zeros(self.alchemical_features, 1, out_features)
-        )
         self.weight.data.normal_(mean=0.0, std=in_features ** (-0.5))
+        if bias:
+            self.bias = torch.nn.Parameter(
+                torch.zeros((num_channels, 1, out_features), device=device, dtype=dtype)
+            )
+        else:
+            self.register_parameter("bias", None)
 
     def forward(self, tensormap: TensorMap) -> TensorMap:
         output_blocks: list[TensorBlock] = []
         for i, block in enumerate(tensormap.blocks()):
-            one_hot_ai = torch.zeros(len(block.samples), len(self.unique_numbers))
-            one_hot_ai[:, i] = 1.0
-            pseudo_species_weights = one_hot_ai @ self.contraction_matrix.T
-            features = block.values
-            embedded_features = (
-                features[None, ...] * pseudo_species_weights.T[:, :, None]
-            )
-            out = torch.bmm(embedded_features, self.weight) + self.bias
-            out = torch.sum(out, dim=0)
+            assert (
+                len(block.components) == 1
+            )  # only a single components group is supported
+            assert len(block.components[0].values) == self.num_channels
+            values = block.values.transpose(0, 1)
+            out_values = torch.bmm(values, self.weight)
+            if self.bias is not None:
+                out_values += self.bias
+            out_values = out_values.transpose(0, 1)
             labels = Labels(
                 names=["out_features_idx"],
                 values=torch.arange(
@@ -52,7 +54,7 @@ class AlchemicalContraction(torch.nn.Module):
                 ).reshape(-1, 1),
             )
             new_block = TensorBlock(
-                values=out,
+                values=out_values.contiguous(),
                 samples=block.samples,
                 components=block.components,
                 properties=labels,

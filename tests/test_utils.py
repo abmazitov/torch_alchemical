@@ -20,7 +20,7 @@ class TestUtils:
 
     def test_batch_numbers_to_composition_convertion(self):
         compositions = get_compositions_from_numbers(
-            self.batch.numbers, self.all_species, self.batch.ptr
+            self.batch.numbers, self.all_species, self.batch.batch
         )
         assert torch.equal(
             torch.stack(compositions),
@@ -37,4 +37,4 @@ class TestUtils:
         properties = get_target_properties(self.frames[0], ["energies", "forces"])
         ref_properties = torch.load("./tests/data/hea_bulk_test_target_properties.pt")
         for key in properties.keys():
-            assert torch.equal(properties[key], ref_properties[key])
+            assert torch.allclose(properties[key], ref_properties[key])

@@ -32,8 +32,8 @@ class LitModel(pl.LightningModule):
             cells=batch.cell,
             numbers=batch.numbers,
             edge_indices=batch.edge_index,
-            edge_shifts=batch.edge_shift,
-            ptr=batch.ptr,
+            edge_offsets=batch.edge_offsets,
+            batch=batch.batch,
         )
         predicted_forces = get_autograd_forces(predicted_energies, batch.pos)[0]
         target_energies = batch.energies.view(-1, 1)

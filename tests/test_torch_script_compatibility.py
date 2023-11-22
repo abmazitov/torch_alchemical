@@ -4,7 +4,7 @@ import torch
 from torch_alchemical.data import AtomisticDataset
 from torch_alchemical.transforms import NeighborList
 from torch_geometric.loader import DataLoader
-from torch_alchemical.models import PowerSpectrumModel, BPPSModel
+from torch_alchemical.models import PowerSpectrumModel, BPPSModel, AlchemicalModel
 from ase.io import read
 import json
 import numpy as np
@@ -14,7 +14,29 @@ torch.set_default_dtype(torch.float64)
 
 class TestNNLayers:
     ps = metatensor.torch.load("./tests/data/ps_test_data.npz")
+    unique_numbers = ps.keys.values.flatten().tolist()
+    emb_ps = metatensor.torch.load("./tests/data/emb_ps_test_data.npz")
     ps_input_size = ps.block(0).values.shape[-1]
+    contraction_matrix = torch.load("./tests/data/contraction_matrix.pt")
+    num_channels = len(contraction_matrix)
+
+    def test_alchemical_embedding(self):
+        embedding = torch.jit.script(
+            nn.AlchemicalEmbedding(self.unique_numbers, self.contraction_matrix)
+        )
+        with torch.no_grad():
+            embedding(self.ps)
+
+    def test_multi_channel_linear(self):
+        mclinear = torch.jit.script(
+            nn.MultiChannelLinear(
+                self.ps_input_size,
+                1,
+                self.num_channels,
+            )
+        )
+        with torch.no_grad():
+            mclinear(self.emb_ps)
 
     def test_linear(self):
         linear = torch.jit.script(nn.Linear(self.ps_input_size, 1))
@@ -55,10 +77,8 @@ class TestModels:
     all_species = np.unique(np.hstack([frame.numbers for frame in frames])).tolist()
     with open("./tests/configs/default_hypers_alchemical.json", "r") as f:
         hypers = json.load(f)
-    with open("./tests/configs/ps_model_parameters.json", "r") as f:
-        ps_model_parameters = json.load(f)
-    with open("./tests/configs/bpps_model_parameters.json", "r") as f:
-        bpps_model_parameters = json.load(f)
+    with open("./tests/configs/default_model_parameters.json", "r") as f:
+        default_model_parameters = json.load(f)
     transforms = [NeighborList(cutoff_radius=hypers["cutoff radius"])]
     dataset = AtomisticDataset(
         frames, target_properties=["energies", "forces"], transforms=transforms
@@ -66,11 +86,11 @@ class TestModels:
     dataloader = DataLoader(dataset, batch_size=len(frames), shuffle=False)
     batch = next(iter(dataloader))
 
-    def test_power_spectrum_model(self):
+    def test_alchemical_model(self):
         model = torch.jit.script(
-            PowerSpectrumModel(
+            AlchemicalModel(
                 unique_numbers=self.all_species,
-                **self.ps_model_parameters,
+                **self.default_model_parameters,
             )
         )
         model.forward(
@@ -78,15 +98,31 @@ class TestModels:
             cells=self.batch.cell,
             numbers=self.batch.numbers,
             edge_indices=self.batch.edge_index,
-            edge_shifts=self.batch.edge_shift,
-            ptr=self.batch.ptr,
+            edge_offsets=self.batch.edge_offsets,
+            batch=self.batch.batch,
+        )
+
+    def test_power_spectrum_model(self):
+        model = torch.jit.script(
+            PowerSpectrumModel(
+                unique_numbers=self.all_species,
+                **self.default_model_parameters,
+            )
+        )
+        model.forward(
+            positions=self.batch.pos,
+            cells=self.batch.cell,
+            numbers=self.batch.numbers,
+            edge_indices=self.batch.edge_index,
+            edge_offsets=self.batch.edge_offsets,
+            batch=self.batch.batch,
         )
 
     def test_bpps_model(self):
         model = torch.jit.script(
             BPPSModel(
                 unique_numbers=self.all_species,
-                **self.bpps_model_parameters,
+                **self.default_model_parameters,
             )
         )
         model.forward(
@@ -94,6 +130,6 @@ class TestModels:
             cells=self.batch.cell,
             numbers=self.batch.numbers,
             edge_indices=self.batch.edge_index,
-            edge_shifts=self.batch.edge_shift,
-            ptr=self.batch.ptr,
+            edge_offsets=self.batch.edge_offsets,
+            batch=self.batch.batch,
         )

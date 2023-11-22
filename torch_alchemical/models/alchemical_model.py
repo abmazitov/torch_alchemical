@@ -5,10 +5,12 @@ from typing import Union
 
 from torch_alchemical.nn import (
     LayerNorm,
-    AlchemicalContraction,
+    AlchemicalEmbedding,
+    MultiChannelLinear,
     PowerSpectrumFeatures,
     SiLU,
 )
+from torch_alchemical.operations import sum_over_components
 from torch_alchemical.utils import get_compositions_from_numbers
 
 
@@ -21,12 +23,12 @@ class AlchemicalModel(torch.nn.Module):
         cutoff: float,
         basis_cutoff_power_spectrum: float,
         radial_basis_type: str,
-        energies_scale_factor: float = 1.0,
-        normalize: bool = True,
-        average_number_of_atoms: float = None,
-        basis_normalization_factor: float = None,
-        trainable_basis: bool = True,
         num_pseudo_species: int = None,
+        trainable_basis: bool = True,
+        normalize: bool = True,
+        basis_normalization_factor: float = None,
+        energies_scale_factor: float = 1.0,
+        average_number_of_atoms: float = 1.0,
         device: torch.device = None,
     ):
         super().__init__()
@@ -60,25 +62,27 @@ class AlchemicalModel(torch.nn.Module):
             self.contraction_layer = (
                 self.ps_features_layer.spex_calculator.vector_expansion_calculator.radial_basis_calculator.combination_matrix
             )
+        self.embedding = AlchemicalEmbedding(
+            unique_numbers=unique_numbers,
+            contraction_matrix=self.contraction_layer.weight,
+        )
         layer_size = [ps_input_size] + hidden_sizes
         layers = []
         for layer_index in range(1, len(layer_size)):
             layers.append(
-                AlchemicalContraction(
-                    unique_numbers=unique_numbers,
-                    contraction_matrix=self.contraction_layer.weight,
+                MultiChannelLinear(
                     in_features=layer_size[layer_index - 1],
                     out_features=layer_size[layer_index],
+                    num_channels=self.num_pseudo_species,
                     bias=False,
                 )
             )
             layers.append(SiLU())
         layers.append(
-            AlchemicalContraction(
-                unique_numbers=unique_numbers,
-                contraction_matrix=self.contraction_layer.weight,
+            MultiChannelLinear(
                 in_features=layer_size[-1],
                 out_features=output_size,
+                num_channels=self.num_pseudo_species,
                 bias=False,
             )
         )
@@ -98,9 +102,11 @@ class AlchemicalModel(torch.nn.Module):
         )
         if self.normalize:
             ps = self.layer_norm(ps)
+        ps = self.embedding(ps)
         for layer in self.nn:
             ps = layer(ps)
-        psnn = ps.keys_to_samples("a_i")
+        psnn = sum_over_components(ps)
+        psnn = psnn.keys_to_samples("a_i")
         features = psnn.block().values
         energies = torch.zeros(
             len(torch.unique(batch)), 1, device=features.device, dtype=features.dtype

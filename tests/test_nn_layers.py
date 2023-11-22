@@ -7,69 +7,78 @@ torch.set_default_dtype(torch.float64)
 torch.manual_seed(0)
 
 
+def evaluate_layer(layer, ps, ref_ps):
+    with torch.no_grad():
+        layer_ps = layer(ps)
+    assert metatensor.operations.allclose(layer_ps, ref_ps, atol=1e-5, rtol=1e-5)
+
+
 class TestNNLayers:
     ps = metatensor.torch.load("./tests/data/ps_test_data.npz")
+    unique_numbers = ps.keys.values.flatten().tolist()
+    emb_ps = metatensor.torch.load("./tests/data/emb_ps_test_data.npz")
     ps_input_size = ps.block(0).values.shape[-1]
+    contraction_matrix = torch.load("./tests/data/contraction_matrix.pt")
+    num_channels = len(contraction_matrix)
+
+    def test_alchemical_embedding(self):
+        torch.manual_seed(0)
+        layer = nn.AlchemicalEmbedding(self.unique_numbers, self.contraction_matrix)
+        ref_ps = metatensor.torch.load(
+            "./tests/data/emb_ps_test_data.npz",
+        )
+        evaluate_layer(layer, self.ps, ref_ps)
+
+    def test_multi_channel_linear(self):
+        torch.manual_seed(0)
+        layer = nn.MultiChannelLinear(
+            self.ps_input_size,
+            1,
+            self.num_channels,
+        )
+        ref_ps = metatensor.torch.load(
+            "./tests/data/mclinear_ps_test_data.npz",
+        )
+        evaluate_layer(layer, self.emb_ps, ref_ps)
 
     def test_linear(self):
         torch.manual_seed(0)
-        linear = nn.Linear(self.ps_input_size, 1)
-        with torch.no_grad():
-            linear_ps = linear(self.ps)
-        ref_linear_ps = metatensor.torch.load(
+        layer = nn.Linear(self.ps_input_size, 1)
+        ref_ps = metatensor.torch.load(
             "./tests/data/linear_ps_test_data.npz",
         )
-        assert metatensor.operations.allclose(
-            linear_ps, ref_linear_ps, atol=1e-5, rtol=1e-5
-        )
+        evaluate_layer(layer, self.ps, ref_ps)
 
     def test_linearmap(self):
         torch.manual_seed(0)
-        linear = nn.LinearMap(
+        layer = nn.LinearMap(
             self.ps.keys.values.flatten().tolist(), self.ps_input_size, 1
         )
-        with torch.no_grad():
-            linear_ps = linear(self.ps)
-        ref_linear_ps = metatensor.torch.load(
+        ref_ps = metatensor.torch.load(
             "./tests/data/linearmap_ps_test_data.npz",
         )
-        assert metatensor.operations.allclose(
-            linear_ps, ref_linear_ps, atol=1e-5, rtol=1e-5
-        )
+        evaluate_layer(layer, self.ps, ref_ps)
 
     def test_layer_norm(self):
         torch.manual_seed(0)
-        norm = nn.LayerNorm(self.ps_input_size)
-        with torch.no_grad():
-            norm_ps = norm(self.ps)
-        ref_norm_ps = metatensor.torch.load("./tests/data/norm_ps_test_data.npz")
-        assert metatensor.operations.allclose(
-            norm_ps, ref_norm_ps, atol=1e-5, rtol=1e-5
-        )
+        layer = nn.LayerNorm(self.ps_input_size)
+        ref_ps = metatensor.torch.load("./tests/data/norm_ps_test_data.npz")
+        evaluate_layer(layer, self.ps, ref_ps)
 
     def test_relu(self):
-        relu = nn.ReLU()
-        ps_relu = relu(self.ps)
-        ref_ps_relu = metatensor.torch.load("./tests/data/relu_ps_test_data.npz")
-        assert metatensor.operations.allclose(
-            ps_relu, ref_ps_relu, atol=1e-5, rtol=1e-5
-        )
+        layer = nn.ReLU()
+        ref_ps = metatensor.torch.load("./tests/data/relu_ps_test_data.npz")
+        evaluate_layer(layer, self.ps, ref_ps)
 
     def test_silu(self):
-        silu = nn.SiLU()
-        ps_silu = silu(self.ps)
-        ref_ps_silu = metatensor.torch.load("./tests/data/silu_ps_test_data.npz")
-        assert metatensor.operations.allclose(
-            ps_silu, ref_ps_silu, atol=1e-5, rtol=1e-5
-        )
+        layer = nn.SiLU()
+        ref_ps = metatensor.torch.load("./tests/data/silu_ps_test_data.npz")
+        evaluate_layer(layer, self.ps, ref_ps)
 
     def test_selu(self):
-        selu = nn.SELU()
-        ps_selu = selu(self.ps)
-        ref_ps_selu = metatensor.torch.load("./tests/data/selu_ps_test_data.npz")
-        assert metatensor.operations.allclose(
-            ps_selu, ref_ps_selu, atol=1e-5, rtol=1e-5
-        )
+        layer = nn.SELU()
+        ref_ps = metatensor.torch.load("./tests/data/selu_ps_test_data.npz")
+        evaluate_layer(layer, self.ps, ref_ps)
 
     def test_loss_functions(self):
         ref_energies = torch.load("./tests/data/hea_bulk_test_ps_energies.pt")
