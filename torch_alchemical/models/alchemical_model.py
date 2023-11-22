@@ -53,12 +53,12 @@ class AlchemicalModel(torch.nn.Module):
         ps_input_size = self.ps_features_layer.num_features
         if self.normalize:
             self.layer_norm = LayerNorm(ps_input_size)
-            combination_matrix = (
-                self.ps_features_layer.spex_calculator.vector_expansion_calculator.radial_basis_calculator.combination_matrix.linear_layer.weight
+            self.contraction_layer = (
+                self.ps_features_layer.spex_calculator.vector_expansion_calculator.radial_basis_calculator.combination_matrix.linear_layer
             )
         else:
-            combination_matrix = (
-                self.ps_features_layer.spex_calculator.vector_expansion_calculator.radial_basis_calculator.combination_matrix.weight
+            self.contraction_layer = (
+                self.ps_features_layer.spex_calculator.vector_expansion_calculator.radial_basis_calculator.combination_matrix
             )
         layer_size = [ps_input_size] + hidden_sizes
         layers = []
@@ -66,7 +66,7 @@ class AlchemicalModel(torch.nn.Module):
             layers.append(
                 AlchemicalContraction(
                     unique_numbers=unique_numbers,
-                    contraction_matrix=combination_matrix,
+                    contraction_matrix=self.contraction_layer.weight,
                     in_features=layer_size[layer_index - 1],
                     out_features=layer_size[layer_index],
                     bias=False,
@@ -76,7 +76,7 @@ class AlchemicalModel(torch.nn.Module):
         layers.append(
             AlchemicalContraction(
                 unique_numbers=unique_numbers,
-                contraction_matrix=combination_matrix,
+                contraction_matrix=self.contraction_layer.weight,
                 in_features=layer_size[-1],
                 out_features=output_size,
                 bias=False,

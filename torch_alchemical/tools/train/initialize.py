@@ -10,9 +10,14 @@ def initialize_composition_layer_weights(model, datamodule, trainable=False):
     dataset = datamodule.train_dataset
     composition_layer = model.composition_layer
     numbers = torch.cat([data.numbers for data in dataset])
-    ptr = torch.cumsum(torch.tensor([0] + [data.num_nodes for data in dataset]), dim=0)
+    batch = torch.cat(
+        [
+            torch.repeat_interleave(torch.tensor([i]), data.num_nodes)
+            for i, data in enumerate(dataset)
+        ]
+    )
     compositions = torch.stack(
-        get_compositions_from_numbers(numbers, datamodule.unique_numbers, ptr)
+        get_compositions_from_numbers(numbers, datamodule.unique_numbers, batch)
     )
     bias = composition_layer.bias is not None
     if bias:
@@ -42,9 +47,14 @@ def initialize_energies_forces_scale_factor(
     dataset = datamodule.train_dataset
     composition_layer = model.composition_layer
     numbers = torch.cat([data.numbers for data in dataset])
-    ptr = torch.cumsum(torch.tensor([0] + [data.num_nodes for data in dataset]), dim=0)
+    batch = torch.cat(
+        [
+            torch.repeat_interleave(torch.tensor([i]), data.num_nodes)
+            for i, data in enumerate(dataset)
+        ]
+    )
     compositions = torch.stack(
-        get_compositions_from_numbers(numbers, datamodule.unique_numbers, ptr)
+        get_compositions_from_numbers(numbers, datamodule.unique_numbers, batch)
     )
     energies = torch.cat([data.energies.view(1, -1) for data in dataset], dim=0)
     composition_energies = composition_layer(compositions)
@@ -62,9 +72,14 @@ def rescale_energies_and_forces(model, datamodule, scale_factor):
     dataset = datamodule.train_dataset
     composition_layer = model.composition_layer
     numbers = torch.cat([data.numbers for data in dataset])
-    ptr = torch.cumsum(torch.tensor([0] + [data.num_nodes for data in dataset]), dim=0)
+    batch = torch.cat(
+        [
+            torch.repeat_interleave(torch.tensor([i]), data.num_nodes)
+            for i, data in enumerate(dataset)
+        ]
+    )
     compositions = torch.stack(
-        get_compositions_from_numbers(numbers, datamodule.unique_numbers, ptr)
+        get_compositions_from_numbers(numbers, datamodule.unique_numbers, batch)
     )
     composition_energies = composition_layer(compositions)
     composition_energies = composition_energies.squeeze()
