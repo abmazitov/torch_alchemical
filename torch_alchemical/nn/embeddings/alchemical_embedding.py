@@ -17,7 +17,11 @@ class AlchemicalEmbedding(torch.nn.Module):
         output_blocks: list[TensorBlock] = []
         for i, block in enumerate(tensormap.blocks()):
             assert not block.components
-            one_hot_ai = torch.zeros(len(block.samples), len(self.unique_numbers))
+            one_hot_ai = torch.zeros(
+                len(block.samples),
+                len(self.unique_numbers),
+                device=block.values.device,
+            )
             one_hot_ai[:, i] = 1.0
             pseudo_species_weights = one_hot_ai @ self.contraction_matrix.T
             features = block.values
