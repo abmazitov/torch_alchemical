@@ -1,7 +1,7 @@
 import numpy as np
 import torch
 
-from typing import Union, Optional
+from typing import Union
 
 from torch_alchemical.nn import (
     Linear,
@@ -56,21 +56,21 @@ class PowerSpectrumModel(torch.nn.Module):
 
     def forward(
         self,
-        positions: Union[torch.Tensor, list[torch.Tensor]],
-        cells: Union[torch.Tensor, list[torch.Tensor]],
-        numbers: Union[torch.Tensor, list[torch.Tensor]],
-        edge_indices: Union[torch.Tensor, list[torch.Tensor]],
-        edge_shifts: Union[torch.Tensor, list[torch.Tensor]],
-        ptr: Optional[torch.Tensor] = None,
+        positions: torch.Tensor,
+        cells: torch.Tensor,
+        numbers: torch.Tensor,
+        edge_indices: torch.Tensor,
+        edge_offsets: torch.Tensor,
+        batch: torch.Tensor,
     ):
         compositions = torch.stack(
             get_compositions_from_numbers(
-                numbers, self.unique_numbers, ptr, self.composition_layer.weight.dtype
+                numbers, self.unique_numbers, batch, self.composition_layer.weight.dtype
             )
         )
         energies = self.composition_layer(compositions)
         ps = self.ps_features_layer(
-            positions, cells, numbers, edge_indices, edge_shifts, ptr
+            positions, cells, numbers, edge_indices, edge_offsets, batch
         )
         psl = self.ps_linear(ps).keys_to_samples("a_i")
         energies_psl = torch.zeros_like(energies)

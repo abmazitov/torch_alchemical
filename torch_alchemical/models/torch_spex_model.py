@@ -7,7 +7,7 @@ from torch_spex.normalize import (
 )
 import metatensor.torch
 from metatensor.torch import Labels, TensorBlock, TensorMap
-from typing import Union, Optional
+from typing import Union
 from torch_alchemical.utils import get_torch_spex_dict
 from torch_alchemical.utils import get_compositions_from_numbers
 
@@ -132,20 +132,20 @@ class TorchSpexModel(torch.nn.Module):
 
     def forward(
         self,
-        positions: Union[torch.Tensor, list[torch.Tensor]],
-        cells: Union[torch.Tensor, list[torch.Tensor]],
-        numbers: Union[torch.Tensor, list[torch.Tensor]],
-        edge_indices: Union[torch.Tensor, list[torch.Tensor]],
-        edge_shifts: Union[torch.Tensor, list[torch.Tensor]],
-        ptr: Optional[torch.Tensor] = None,
+        positions: torch.Tensor,
+        cells: torch.Tensor,
+        numbers: torch.Tensor,
+        edge_indices: torch.Tensor,
+        edge_offsets: torch.Tensor,
+        batch: torch.Tensor,
     ):
         structures = get_torch_spex_dict(
             positions=positions,
             cells=cells,
             numbers=numbers,
             edge_indices=edge_indices,
-            edge_shifts=edge_shifts,
-            ptr=ptr,
+            edge_offsets=edge_offsets,
+            batch=batch,
         )
 
         n_structures = len(structures["cells"])

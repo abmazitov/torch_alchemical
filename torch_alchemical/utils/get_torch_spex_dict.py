@@ -54,7 +54,7 @@ def get_torch_spex_dict(
     cells: torch.Tensor,
     numbers: torch.Tensor,
     edge_indices: torch.Tensor,
-    edge_shifts: torch.Tensor,
+    edge_offsets: torch.Tensor,
     batch: torch.Tensor,
 ) -> Dict[str, torch.Tensor]:
     device = positions.device
@@ -79,7 +79,7 @@ def get_torch_spex_dict(
         positions=positions,
         cells=cells,
         species=numbers,
-        cell_shifts=edge_shifts.to(torch.int64),
+        cell_shifts=edge_offsets.to(torch.int64),
         centers=centers,
         pairs=pairs,
         structure_centers=structure_centers,

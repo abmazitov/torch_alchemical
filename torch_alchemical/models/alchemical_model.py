@@ -111,7 +111,7 @@ class AlchemicalModel(torch.nn.Module):
             source=features,
         )
         if self.normalize:
-            energies = energies / torch.sqrt(self.num_pseudo_species)
+            energies = energies / torch.sqrt(torch.tensor(self.num_pseudo_species))
             energies = energies / self.average_number_of_atoms
         if self.training:
             return energies
