@@ -6,12 +6,13 @@ class AlchemicalEmbedding(torch.nn.Module):
     def __init__(
         self,
         unique_numbers: list[int],
-        contraction_matrix: torch.Tensor,
+        num_pseudo_species: int,
+        contraction_layer: torch.nn.Module,
     ):
         super().__init__()
         self.unique_numbers = unique_numbers
-        self.contraction_matrix = contraction_matrix
-        self.num_pseudo_species = len(contraction_matrix)
+        self.contraction_layer = contraction_layer
+        self.num_pseudo_species = num_pseudo_species
 
     def forward(self, tensormap: TensorMap) -> TensorMap:
         output_blocks: list[TensorBlock] = []
@@ -23,7 +24,7 @@ class AlchemicalEmbedding(torch.nn.Module):
                 device=block.values.device,
             )
             one_hot_ai[:, i] = 1.0
-            pseudo_species_weights = one_hot_ai @ self.contraction_matrix.T
+            pseudo_species_weights = self.contraction_layer(one_hot_ai)
             features = block.values
             embedded_features = pseudo_species_weights[..., None] * features[:, None, :]
             components = Labels(
