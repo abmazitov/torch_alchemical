@@ -18,12 +18,14 @@ class TestNNLayers:
     unique_numbers = ps.keys.values.flatten().tolist()
     emb_ps = metatensor.torch.load("./tests/data/emb_ps_test_data.npz")
     ps_input_size = ps.block(0).values.shape[-1]
-    contraction_matrix = torch.load("./tests/data/contraction_matrix.pt")
-    num_channels = len(contraction_matrix)
+    contraction_layer = torch.load("./tests/data/contraction_layer.pt")
+    num_channels = 4
 
     def test_alchemical_embedding(self):
         torch.manual_seed(0)
-        layer = nn.AlchemicalEmbedding(self.unique_numbers, self.contraction_matrix)
+        layer = nn.AlchemicalEmbedding(
+            self.unique_numbers, self.num_channels, self.contraction_layer
+        )
         ref_ps = metatensor.torch.load(
             "./tests/data/emb_ps_test_data.npz",
         )
