@@ -76,6 +76,15 @@ class AlchemicalModel(torch.nn.Module):
                     bias=False,
                 )
             )
+            if self.normalize:
+                layers.append(
+                    LayerNorm(
+                        layer_size[layer_index],
+                        elementwise_affine=False,
+                        eps=0.0,
+                        bias=False,
+                    )
+                )
             layers.append(SiLU())
         layers.append(
             MultiChannelLinear(

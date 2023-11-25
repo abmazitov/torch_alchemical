@@ -92,11 +92,12 @@ class PowerSpectrumFeatures(torch.nn.Module):
 
 
 class PowerSpectrum(torch.nn.Module):
-    def __init__(self, l_max, all_species):
+    def __init__(self, l_max, all_species, normalize_l_channels=False):
         super(PowerSpectrum, self).__init__()
 
         self.l_max = l_max
         self.all_species = all_species
+        self.normalize_l_channels = normalize_l_channels
 
     def forward(self, spex: TensorMap):
         keys: list[list[int]] = []
@@ -108,13 +109,24 @@ class PowerSpectrum(torch.nn.Module):
                 cg = (2 * l + 1) ** (-0.5)
                 block_ai_l = spex.block({"lam": l, "a_i": a_i})
                 c_ai_l = block_ai_l.values
-
                 # same as this:
                 # ps_ai_l = cg*torch.einsum("ima, imb -> iab", c_ai_l, c_ai_l)
                 # but faster:
-                ps_ai_l = cg * torch.sum(
-                    c_ai_l.unsqueeze(2) * c_ai_l.unsqueeze(3), dim=1
-                )
+                ps_ai_l = torch.sum(c_ai_l.unsqueeze(2) * c_ai_l.unsqueeze(3), dim=1)
+                norm = cg * torch.ones(c_ai_l.shape[2], c_ai_l.shape[2], device=device)
+                if self.normalize_l_channels:
+                    diag_cg = cg * 3 ** (-0.5)
+                    norm.fill_diagonal_(diag_cg)
+                    norm = (
+                        norm[None, ...]
+                        * (torch.mean(ps_ai_l**2, dim=(1, 2)) ** (-0.5))[
+                            ..., None, None
+                        ]
+                    )
+                else:
+                    norm = norm[None, ...]
+
+                ps_ai_l = ps_ai_l * norm
 
                 ps_ai_l = ps_ai_l.reshape(
                     c_ai_l.shape[0], c_ai_l.shape[2] * c_ai_l.shape[2]
