@@ -17,6 +17,7 @@ class PowerSpectrumFeatures(torch.nn.Module):
         basis_cutoff: float,
         radial_basis_type: str = "le",
         basis_normalization_factor: float = None,
+        basis_scale: float = 3.0,
         trainable_basis: bool = True,
         num_pseudo_species: int = None,
         device: torch.device = None,
@@ -27,6 +28,7 @@ class PowerSpectrumFeatures(torch.nn.Module):
         self.all_species = all_species
         self.cutoff_radius = cutoff_radius
         self.basis_cutoff = basis_cutoff
+        self.basis_scale = basis_scale
         self.radial_basis_type = radial_basis_type
         self.basis_normalization_factor = basis_normalization_factor
         self.trainable_basis = trainable_basis
@@ -38,7 +40,7 @@ class PowerSpectrumFeatures(torch.nn.Module):
                 "type": self.radial_basis_type,
                 "E_max": self.basis_cutoff,
                 "mlp": self.trainable_basis,
-                "scale": 3.0,
+                "scale": self.basis_scale,
                 "cost_trade_off": False,
             },
         }
@@ -92,12 +94,11 @@ class PowerSpectrumFeatures(torch.nn.Module):
 
 
 class PowerSpectrum(torch.nn.Module):
-    def __init__(self, l_max, all_species, normalize_l_channels=False):
+    def __init__(self, l_max, all_species):
         super(PowerSpectrum, self).__init__()
 
         self.l_max = l_max
         self.all_species = all_species
-        self.normalize_l_channels = normalize_l_channels
 
     def forward(self, spex: TensorMap):
         keys: list[list[int]] = []
@@ -114,19 +115,10 @@ class PowerSpectrum(torch.nn.Module):
                 # but faster:
                 ps_ai_l = torch.sum(c_ai_l.unsqueeze(2) * c_ai_l.unsqueeze(3), dim=1)
                 norm = cg * torch.ones(c_ai_l.shape[2], c_ai_l.shape[2], device=device)
-                if self.normalize_l_channels:
-                    diag_cg = cg * 3 ** (-0.5)
-                    norm.fill_diagonal_(diag_cg)
-                    norm = (
-                        norm[None, ...]
-                        * (torch.mean(ps_ai_l**2, dim=(1, 2)) ** (-0.5))[
-                            ..., None, None
-                        ]
-                    )
-                else:
-                    norm = norm[None, ...]
+                diag_cg = cg * 3 ** (-0.5)
+                norm.fill_diagonal_(diag_cg)
 
-                ps_ai_l = ps_ai_l * norm
+                ps_ai_l = ps_ai_l * norm[None, ...]
 
                 ps_ai_l = ps_ai_l.reshape(
                     c_ai_l.shape[0], c_ai_l.shape[2] * c_ai_l.shape[2]
