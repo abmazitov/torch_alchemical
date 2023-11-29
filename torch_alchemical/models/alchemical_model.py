@@ -56,9 +56,7 @@ class AlchemicalModel(torch.nn.Module):
         )
         ps_input_size = self.ps_features_layer.num_features
         if self.normalize:
-            self.layer_norm = LayerNorm(
-                ps_input_size, elementwise_affine=False, eps=0.0, bias=False
-            )
+            self.layer_norm = LayerNorm(ps_input_size)
         contraction_layer = (
             self.ps_features_layer.spex_calculator.vector_expansion_calculator.radial_basis_calculator.combination_matrix
         )
@@ -78,15 +76,6 @@ class AlchemicalModel(torch.nn.Module):
                     bias=False,
                 )
             )
-            if self.normalize:
-                layers.append(
-                    LayerNorm(
-                        layer_size[layer_index],
-                        elementwise_affine=False,
-                        eps=0.0,
-                        bias=False,
-                    )
-                )
             layers.append(SiLU())
         layers.append(
             MultiChannelLinear(
