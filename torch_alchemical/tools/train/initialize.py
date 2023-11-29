@@ -10,9 +10,14 @@ def initialize_composition_layer_weights(model, datamodule, trainable=False):
     dataset = datamodule.train_dataset
     composition_layer = model.composition_layer
     numbers = torch.cat([data.numbers for data in dataset])
-    ptr = torch.cumsum(torch.tensor([0] + [data.num_nodes for data in dataset]), dim=0)
+    batch = torch.cat(
+        [
+            torch.repeat_interleave(torch.tensor([i]), data.num_nodes)
+            for i, data in enumerate(dataset)
+        ]
+    )
     compositions = torch.stack(
-        get_compositions_from_numbers(numbers, datamodule.unique_numbers, ptr)
+        get_compositions_from_numbers(numbers, datamodule.unique_numbers, batch)
     )
     bias = composition_layer.bias is not None
     if bias:
@@ -34,31 +39,54 @@ def initialize_composition_layer_weights(model, datamodule, trainable=False):
     print("Composition layer weights are initialized with least squares solution")
 
 
-def initialize_energies_rescaling(
-    model, datamodule, rescale_target_data=False, trainable_scale_factor=False
+def initialize_energies_forces_scale_factor(
+    model, datamodule, use_second_moment=True, trainable=False
 ):
     assert hasattr(model, "composition_layer")
     assert hasattr(model, "energies_scale_factor")
     dataset = datamodule.train_dataset
     composition_layer = model.composition_layer
     numbers = torch.cat([data.numbers for data in dataset])
-    ptr = torch.cumsum(torch.tensor([0] + [data.num_nodes for data in dataset]), dim=0)
+    batch = torch.cat(
+        [
+            torch.repeat_interleave(torch.tensor([i]), data.num_nodes)
+            for i, data in enumerate(dataset)
+        ]
+    )
     compositions = torch.stack(
-        get_compositions_from_numbers(numbers, datamodule.unique_numbers, ptr)
+        get_compositions_from_numbers(numbers, datamodule.unique_numbers, batch)
     )
     energies = torch.cat([data.energies.view(1, -1) for data in dataset], dim=0)
     composition_energies = composition_layer(compositions)
-    scale = torch.std(energies - composition_energies)
-    model.energies_scale_factor = torch.nn.Parameter(
-        scale, requires_grad=trainable_scale_factor
+    if use_second_moment:
+        scale = torch.sqrt(torch.mean((energies - composition_energies) ** 2))
+        scale_description = "second moments"
+    else:
+        scale = torch.std(energies - composition_energies)
+        scale_description = "standard deviation"
+    model.energies_scale_factor = torch.nn.Parameter(scale, requires_grad=trainable)
+    print(f"Energies scale is initialized with shifted energies {scale_description}")
+
+
+def rescale_energies_and_forces(model, datamodule, scale_factor):
+    dataset = datamodule.train_dataset
+    composition_layer = model.composition_layer
+    numbers = torch.cat([data.numbers for data in dataset])
+    batch = torch.cat(
+        [
+            torch.repeat_interleave(torch.tensor([i]), data.num_nodes)
+            for i, data in enumerate(dataset)
+        ]
     )
-    print("Energies scale is initialized with shifted energies standard deviation")
-    if rescale_target_data:
-        composition_energies = composition_energies.squeeze()
-        for i, data in enumerate(dataset):
-            data.energies = (data.energies - composition_energies[i]) / scale
-            data.forces = data.forces / scale
-        print("Training energies and forces are shifted and rescaled")
+    compositions = torch.stack(
+        get_compositions_from_numbers(numbers, datamodule.unique_numbers, batch)
+    )
+    composition_energies = composition_layer(compositions)
+    composition_energies = composition_energies.squeeze()
+    for i, data in enumerate(dataset):
+        data.energies = (data.energies - composition_energies[i]) / scale_factor
+        data.forces = data.forces / scale_factor
+    print("Training energies and forces are shifted and rescaled")
 
 
 def initialize_combining_matrix(model, datamodule, trainable=True):
@@ -74,3 +102,12 @@ def initialize_combining_matrix(model, datamodule, trainable=True):
         requires_grad=trainable,
     )
     print("Combinining matrix is initialized manually")
+
+
+def initialize_average_number_of_atoms(model, datamodule):
+    assert hasattr(model, "average_number_of_atoms")
+    dataset = datamodule.train_dataset
+    model.average_number_of_atoms = torch.mean(
+        torch.tensor([data.num_nodes for data in dataset]).to(torch.get_default_dtype())
+    )
+    print("Average number of atoms is initialized manually")

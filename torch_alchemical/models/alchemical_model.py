@@ -1,15 +1,16 @@
-import metatensor
 import numpy as np
 import torch
 
 from typing import Union
 
 from torch_alchemical.nn import (
-    Linear,
-    RadialSpectrumFeatures,
+    LayerNorm,
+    AlchemicalEmbedding,
+    MultiChannelLinear,
     PowerSpectrumFeatures,
     SiLU,
 )
+from torch_alchemical.operations import sum_over_components
 from torch_alchemical.utils import get_compositions_from_numbers
 
 
@@ -20,25 +21,27 @@ class AlchemicalModel(torch.nn.Module):
         output_size: int,
         unique_numbers: Union[list, np.ndarray],
         cutoff: float,
-        basis_cutoff_radial_spectrum: float,
         basis_cutoff_power_spectrum: float,
         radial_basis_type: str,
-        basis_normalization_factor: float = None,
-        trainable_basis: bool = True,
         num_pseudo_species: int = None,
+        trainable_basis: bool = True,
+        normalize: bool = True,
+        basis_normalization_factor: float = None,
+        basis_scale: float = 3.0,
+        energies_scale_factor: float = 1.0,
+        average_number_of_atoms: float = 1.0,
         device: torch.device = None,
     ):
         super().__init__()
+        if isinstance(unique_numbers, np.ndarray):
+            unique_numbers = unique_numbers.tolist()
         self.unique_numbers = unique_numbers
-        self.composition_layer = torch.nn.Linear(len(unique_numbers), output_size)
-        self.rs_features_layer = RadialSpectrumFeatures(
-            all_species=unique_numbers,
-            cutoff_radius=cutoff,
-            basis_cutoff=basis_cutoff_radial_spectrum,
-            radial_basis_type=radial_basis_type,
-            basis_normalization_factor=basis_normalization_factor,
-            trainable_basis=trainable_basis,
-            device=device,
+        self.normalize = normalize
+        self.num_pseudo_species = num_pseudo_species
+        self.average_number_of_atoms = average_number_of_atoms
+        self.energies_scale_factor = energies_scale_factor
+        self.composition_layer = torch.nn.Linear(
+            len(unique_numbers), output_size, bias=False
         )
         self.ps_features_layer = PowerSpectrumFeatures(
             all_species=unique_numbers,
@@ -46,23 +49,43 @@ class AlchemicalModel(torch.nn.Module):
             basis_cutoff=basis_cutoff_power_spectrum,
             radial_basis_type=radial_basis_type,
             basis_normalization_factor=basis_normalization_factor,
+            basis_scale=basis_scale,
             trainable_basis=trainable_basis,
             num_pseudo_species=num_pseudo_species,
             device=device,
         )
-        rs_input_size = self.rs_features_layer.num_features
         ps_input_size = self.ps_features_layer.num_features
-        self.rs_linear = Linear(rs_input_size, output_size)
-        self.ps_linear = Linear(ps_input_size, output_size)
-        nn_layers_size = [ps_input_size] + hidden_sizes
+        if self.normalize:
+            self.layer_norm = LayerNorm(ps_input_size)
+        contraction_layer = (
+            self.ps_features_layer.spex_calculator.vector_expansion_calculator.radial_basis_calculator.combination_matrix
+        )
+        self.embedding = AlchemicalEmbedding(
+            unique_numbers=unique_numbers,
+            num_pseudo_species=num_pseudo_species,
+            contraction_layer=contraction_layer,
+        )
+        layer_size = [ps_input_size] + hidden_sizes
         layers = []
-        for layer_index in range(1, len(nn_layers_size)):
+        for layer_index in range(1, len(layer_size)):
             layers.append(
-                Linear(nn_layers_size[layer_index - 1], nn_layers_size[layer_index])
+                MultiChannelLinear(
+                    in_features=layer_size[layer_index - 1],
+                    out_features=layer_size[layer_index],
+                    num_channels=self.num_pseudo_species,
+                    bias=False,
+                )
             )
             layers.append(SiLU())
-        layers.append(Linear(nn_layers_size[-1], output_size))
-        self.nn = torch.nn.Sequential(*layers)
+        layers.append(
+            MultiChannelLinear(
+                in_features=layer_size[-1],
+                out_features=output_size,
+                num_channels=self.num_pseudo_species,
+                bias=False,
+            )
+        )
+        self.nn = torch.nn.ModuleList(layers)
 
     def forward(
         self,
@@ -70,30 +93,43 @@ class AlchemicalModel(torch.nn.Module):
         cells: torch.Tensor,
         numbers: torch.Tensor,
         edge_indices: torch.Tensor,
-        edge_shifts: torch.Tensor,
-        ptr: torch.Tensor,
+        edge_offsets: torch.Tensor,
+        batch: torch.Tensor,
     ):
-        compositions = torch.stack(
-            get_compositions_from_numbers(numbers, self.unique_numbers, ptr)
-        )
-        energies = self.composition_layer(compositions)
-        rs = self.rs_features_layer(
-            positions, cells, numbers, edge_indices, edge_shifts
-        )
         ps = self.ps_features_layer(
-            positions, cells, numbers, edge_indices, edge_shifts
+            positions, cells, numbers, edge_indices, edge_offsets, batch
         )
-        rsl = self.rs_linear(rs)
-        psl = self.ps_linear(ps)
-        psnn = self.nn(ps)
-
-        for tensormap in [rsl, psl, psnn]:
-            energies += (
-                metatensor.sum_over_samples(
-                    tensormap.keys_to_samples("a_i"), ["center", "a_i"]
+        if self.normalize:
+            ps = self.layer_norm(ps)
+        ps = self.embedding(ps)
+        for layer in self.nn:
+            ps = layer(ps)
+        psnn = sum_over_components(ps)
+        psnn = psnn.keys_to_samples("a_i")
+        features = psnn.block().values
+        energies = torch.zeros(
+            len(torch.unique(batch)), 1, device=features.device, dtype=features.dtype
+        )
+        energies.index_add_(
+            dim=0,
+            index=batch,
+            source=features,
+        )
+        if self.normalize:
+            energies = energies / torch.sqrt(torch.tensor(self.num_pseudo_species))
+            energies = energies / self.average_number_of_atoms
+        if self.training:
+            return energies
+        else:
+            compositions = torch.stack(
+                get_compositions_from_numbers(
+                    numbers,
+                    self.unique_numbers,
+                    batch,
+                    self.composition_layer.weight.dtype,
                 )
-                .block()
-                .values
             )
-
-        return energies
+            energies = energies * self.energies_scale_factor + self.composition_layer(
+                compositions
+            )
+            return energies

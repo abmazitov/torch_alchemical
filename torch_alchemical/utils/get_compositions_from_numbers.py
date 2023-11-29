@@ -1,18 +1,19 @@
 import torch
-from typing import Union, Optional
+from typing import Optional
 
 
 def get_compositions_from_numbers(
-    numbers: Union[torch.Tensor, list[torch.Tensor]],
+    numbers: torch.Tensor,
     unique_numbers: list[int],
-    ptr: Optional[torch.Tensor] = None,
+    batch: torch.Tensor,
     dtype: Optional[torch.dtype] = None,
 ) -> list[torch.Tensor]:
-    dtype = dtype if dtype is not None else torch.float64
     compositions: list[torch.Tensor] = []
-    if isinstance(numbers, torch.Tensor):
-        assert ptr is not None
-        numbers = [numbers[ptr[i] : ptr[i + 1]] for i in range(len(ptr) - 1)]
+    device = numbers.device
+    _, counts = torch.unique(batch, return_counts=True)
+    dtype = dtype if dtype is not None else torch.float64
+    ptr = torch.cat([torch.tensor([0], device=device), torch.cumsum(counts, dim=0)])
+    numbers = [numbers[ptr[i] : ptr[i + 1]] for i in range(len(ptr) - 1)]
     unique_numbers = torch.tensor(
         unique_numbers, dtype=numbers[0].dtype, device=numbers[0].device
     )

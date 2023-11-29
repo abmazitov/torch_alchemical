@@ -17,6 +17,7 @@ class PowerSpectrumFeatures(torch.nn.Module):
         basis_cutoff: float,
         radial_basis_type: str = "le",
         basis_normalization_factor: float = None,
+        basis_scale: float = 3.0,
         trainable_basis: bool = True,
         num_pseudo_species: int = None,
         device: torch.device = None,
@@ -27,6 +28,7 @@ class PowerSpectrumFeatures(torch.nn.Module):
         self.all_species = all_species
         self.cutoff_radius = cutoff_radius
         self.basis_cutoff = basis_cutoff
+        self.basis_scale = basis_scale
         self.radial_basis_type = radial_basis_type
         self.basis_normalization_factor = basis_normalization_factor
         self.trainable_basis = trainable_basis
@@ -38,7 +40,7 @@ class PowerSpectrumFeatures(torch.nn.Module):
                 "type": self.radial_basis_type,
                 "E_max": self.basis_cutoff,
                 "mlp": self.trainable_basis,
-                "scale": 3.0,
+                "scale": self.basis_scale,
                 "cost_trade_off": False,
             },
         }
@@ -56,36 +58,16 @@ class PowerSpectrumFeatures(torch.nn.Module):
 
     def forward(
         self,
-        positions: Union[torch.Tensor, list[torch.Tensor]],
-        cells: Union[torch.Tensor, list[torch.Tensor]],
-        numbers: Union[torch.Tensor, list[torch.Tensor]],
-        edge_indices: Union[torch.Tensor, list[torch.Tensor]],
-        edge_shifts: Union[torch.Tensor, list[torch.Tensor]],
-        ptr: Optional[torch.Tensor] = None,
+        positions: torch.Tensor,
+        cells: torch.Tensor,
+        numbers: torch.Tensor,
+        edge_indices: torch.Tensor,
+        edge_offsets: torch.Tensor,
+        batch: torch.Tensor,
     ):
-        if (
-            isinstance(positions, torch.Tensor)
-            and isinstance(cells, torch.Tensor)
-            and isinstance(numbers, torch.Tensor)
-            and isinstance(edge_indices, torch.Tensor)
-            and isinstance(edge_shifts, torch.Tensor)
-        ):
-            assert ptr is not None
-            batch_dict = get_torch_spex_dict(
-                positions, cells, numbers, edge_indices, edge_shifts, ptr
-            )
-        elif (
-            isinstance(positions, list)
-            and isinstance(cells, list)
-            and isinstance(numbers, list)
-            and isinstance(edge_indices, list)
-            and isinstance(edge_shifts, list)
-        ):
-            batch_dict = get_torch_spex_dict_from_data_lists(
-                positions, cells, numbers, edge_indices, edge_shifts
-            )
-        else:
-            raise ValueError()
+        batch_dict = get_torch_spex_dict(
+            positions, cells, numbers, edge_indices, edge_offsets, batch
+        )
         spex = self.spex_calculator(
             positions=batch_dict["positions"],
             cells=batch_dict["cells"],
@@ -128,13 +110,15 @@ class PowerSpectrum(torch.nn.Module):
                 cg = (2 * l + 1) ** (-0.5)
                 block_ai_l = spex.block({"lam": l, "a_i": a_i})
                 c_ai_l = block_ai_l.values
-
                 # same as this:
                 # ps_ai_l = cg*torch.einsum("ima, imb -> iab", c_ai_l, c_ai_l)
                 # but faster:
-                ps_ai_l = cg * torch.sum(
-                    c_ai_l.unsqueeze(2) * c_ai_l.unsqueeze(3), dim=1
-                )
+                ps_ai_l = torch.sum(c_ai_l.unsqueeze(2) * c_ai_l.unsqueeze(3), dim=1)
+                norm = cg * torch.ones(c_ai_l.shape[2], c_ai_l.shape[2], device=device)
+                diag_cg = cg * 3 ** (-0.5)
+                norm.fill_diagonal_(diag_cg)
+
+                ps_ai_l = ps_ai_l * norm[None, ...]
 
                 ps_ai_l = ps_ai_l.reshape(
                     c_ai_l.shape[0], c_ai_l.shape[2] * c_ai_l.shape[2]

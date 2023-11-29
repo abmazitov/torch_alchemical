@@ -19,7 +19,7 @@ class NeighborList(BaseTransform):
         assert hasattr(data, "pos")
         assert hasattr(data, "cell")
         assert hasattr(data, "pbc")
-        edge_src, edge_dst, edge_shift = primitive_neighbor_list(
+        edge_src, edge_dst, edge_offsets = primitive_neighbor_list(
             quantities="ijS",
             pbc=data.pbc,
             cell=data.cell.detach().cpu().numpy(),
@@ -31,9 +31,9 @@ class NeighborList(BaseTransform):
         edge_index = torch.stack(
             [torch.LongTensor(edge_src), torch.LongTensor(edge_dst)], dim=0
         )
-        edge_shift = torch.tensor(edge_shift, dtype=torch.get_default_dtype())
+        edge_offsets = torch.tensor(edge_offsets, dtype=torch.get_default_dtype())
         data.edge_index = edge_index
-        data.edge_shift = edge_shift
+        data.edge_offsets = edge_offsets
         return data
 
     def __repr__(self) -> str:
