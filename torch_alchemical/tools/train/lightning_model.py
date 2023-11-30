@@ -64,7 +64,27 @@ class LitModel(pl.LightningModule):
             on_epoch=True,
             prog_bar=True,
             batch_size=self.trainer.datamodule.batch_size,
+            sync_dist=True,
         )
+
+        predicted_energies = predicted_energies.detach()
+        predicted_forces = predicted_forces.detach()
+        numbers = batch.numbers
+        compositions = torch.stack(
+            get_compositions_from_numbers(
+                numbers, self.model.unique_numbers, batch.batch
+            )
+        )
+        predicted_energies = (
+            predicted_energies * self.model.energies_scale_factor
+            + self.model.composition_layer(compositions)
+        )
+        target_energies = (
+            target_energies * self.model.energies_scale_factor
+            + self.model.composition_layer(compositions)
+        )
+        predicted_forces = predicted_forces * self.model.energies_scale_factor
+        target_forces = target_forces * self.model.energies_scale_factor
 
         loss_fn = MAELoss()
         train_energies_mae = loss_fn(
@@ -82,6 +102,7 @@ class LitModel(pl.LightningModule):
             on_epoch=True,
             prog_bar=True,
             batch_size=self.trainer.datamodule.batch_size,
+            sync_dist=True,
         )
         self.log(
             "train_forces_mae",
@@ -90,6 +111,7 @@ class LitModel(pl.LightningModule):
             on_epoch=True,
             prog_bar=True,
             batch_size=self.trainer.datamodule.batch_size,
+            sync_dist=True,
         )
         self.train_energies_mae += train_energies_mae
         self.train_forces_mae += train_forces_mae
