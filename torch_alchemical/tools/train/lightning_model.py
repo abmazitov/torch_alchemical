@@ -118,7 +118,9 @@ class LitModel(pl.LightningModule):
         return loss
 
     def on_train_epoch_end(self):
-        num_batches = len(self.trainer.datamodule.train_dataloader())
+        num_batches = (
+            len(self.trainer.datamodule.train_dataloader()) * self.trainer.num_devices
+        )
         train_energies_mae = self.train_energies_mae / num_batches
         train_forces_mae = self.train_forces_mae / num_batches
         print("\n")
@@ -173,7 +175,9 @@ class LitModel(pl.LightningModule):
         self.target_forces.append(target_forces.cpu().detach())
 
     def on_validation_epoch_end(self):
-        num_batches = len(self.trainer.datamodule.val_dataloader())
+        num_batches = (
+            len(self.trainer.datamodule.val_dataloader()) * self.trainer.num_devices
+        )
         val_energies_mae = self.val_energies_mae / num_batches
         val_forces_mae = self.val_forces_mae / num_batches
         print("\n")

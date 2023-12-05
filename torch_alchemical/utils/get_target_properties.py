@@ -2,6 +2,27 @@ import torch
 from ase import Atoms
 
 
+def get_property(frame: Atoms, property_name: str):
+    if property_name == "energies":
+        if hasattr(frame, "calc"):
+            prop = frame.get_potential_energy()
+        else:
+            prop = frame.info["energy"]
+    elif property_name == "forces":
+        if hasattr(frame, "calc"):
+            prop = frame.get_forces()
+        else:
+            prop = frame.info["forces"]
+    elif property_name == "stresses":
+        if hasattr(frame, "calc"):
+            prop = frame.get_stress()
+        else:
+            prop = frame.info["stresses"]
+    else:
+        raise ValueError(f"Unknown property {property_name}")
+    return torch.tensor(prop, dtype=torch.get_default_dtype())
+
+
 def get_target_properties(frame: Atoms, properties: list[str]):
     """Get target properties from Atoms object.
 
@@ -20,21 +41,5 @@ def get_target_properties(frame: Atoms, properties: list[str]):
     """
     target_properties = {}
     for prop in properties:
-        if prop == "energies":
-            target_properties[prop] = torch.tensor(
-                frame.get_potential_energy(),
-                dtype=torch.get_default_dtype(),
-            )
-        elif prop == "forces":
-            target_properties[prop] = torch.tensor(
-                frame.get_forces(),
-                dtype=torch.get_default_dtype(),
-            )
-        elif prop == "stresses":
-            target_properties[prop] = torch.tensor(
-                frame.get_stress(),
-                dtype=torch.get_default_dtype(),
-            )
-        else:
-            raise ValueError(f"Unknown property {prop}")
+        target_properties[prop] = get_property(frame, prop)
     return target_properties
