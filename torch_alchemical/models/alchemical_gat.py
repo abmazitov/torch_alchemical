@@ -5,16 +5,20 @@ from typing import Union
 
 from torch_alchemical.nn import (
     LayerNorm,
-    LinearMap,
+    AlchemicalEmbedding,
+    MultiChannelGATConv,
+    MultiChannelLinear,
     PowerSpectrumFeatures,
     SiLU,
 )
+from torch_alchemical.operations import sum_over_components
 from torch_alchemical.utils import get_compositions_from_numbers
 
 
-class BPPSModel(torch.nn.Module):
+class AlchemicalGAT(torch.nn.Module):
     def __init__(
         self,
+        conv_sizes: list[int],
         hidden_sizes: list[int],
         output_size: int,
         unique_numbers: Union[list, np.ndarray],
@@ -34,8 +38,10 @@ class BPPSModel(torch.nn.Module):
         if isinstance(unique_numbers, np.ndarray):
             unique_numbers = unique_numbers.tolist()
         self.unique_numbers = unique_numbers
-        self.energies_scale_factor = energies_scale_factor
+        self.normalize = normalize
+        self.num_pseudo_species = num_pseudo_species
         self.average_number_of_atoms = average_number_of_atoms
+        self.energies_scale_factor = energies_scale_factor
         self.composition_layer = torch.nn.Linear(
             len(unique_numbers), output_size, bias=False
         )
@@ -51,30 +57,49 @@ class BPPSModel(torch.nn.Module):
             device=device,
         )
         ps_input_size = self.ps_features_layer.num_features
-        self.normalize = normalize
         if self.normalize:
             self.layer_norm = LayerNorm(ps_input_size)
-        layer_size = [ps_input_size] + hidden_sizes
-        layers = []
-        for layer_index in range(1, len(layer_size)):
-            layers.append(
-                LinearMap(
-                    keys=self.unique_numbers,
-                    in_features=layer_size[layer_index - 1],
-                    out_features=layer_size[layer_index],
+        contraction_layer = (
+            self.ps_features_layer.spex_calculator.vector_expansion_calculator.radial_basis_calculator.combination_matrix
+        )
+        self.embedding = AlchemicalEmbedding(
+            unique_numbers=unique_numbers,
+            num_pseudo_species=num_pseudo_species,
+            contraction_layer=contraction_layer,
+        )
+
+        conv_layer_size = [ps_input_size] + conv_sizes
+        conv_layers = []
+        for layer_index in range(1, len(conv_layer_size)):
+            conv_layers.append(
+                MultiChannelGATConv(
+                    in_channels=conv_layer_size[layer_index - 1],
+                    out_channels=conv_layer_size[layer_index],
+                    num_channels=self.num_pseudo_species,
                     bias=False,
                 )
             )
-            layers.append(SiLU())
-        layers.append(
-            LinearMap(
-                keys=self.unique_numbers,
-                in_features=layer_size[-1],
-                out_features=output_size,
-                bias=False,
+        self.act = SiLU()
+        self.conv = torch.nn.ModuleList(conv_layers)
+
+        layer_size = [conv_sizes[-1]] + hidden_sizes
+        layers = []
+        for layer_index in range(1, len(layer_size)):
+            layers.append(
+                MultiChannelLinear(
+                    in_features=layer_size[layer_index - 1],
+                    out_features=layer_size[layer_index],
+                    num_channels=self.num_pseudo_species,
+                    bias=False,
+                )
             )
-        )
         self.nn = torch.nn.ModuleList(layers)
+        self.out_linear = MultiChannelLinear(
+            in_features=layer_size[-1],
+            out_features=output_size,
+            num_channels=self.num_pseudo_species,
+            bias=False,
+        )
 
     def forward(
         self,
@@ -90,9 +115,16 @@ class BPPSModel(torch.nn.Module):
         )
         if self.normalize:
             ps = self.layer_norm(ps)
+        ps = self.embedding(ps)
+        ps = ps.keys_to_samples("a_i")
+        for conv in self.conv:
+            ps = conv(ps, edge_indices)
+            ps = self.act(ps)
         for layer in self.nn:
             ps = layer(ps)
-        psnn = ps.keys_to_samples("a_i")
+            ps = self.act(ps)
+        ps = self.out_linear(ps)
+        psnn = sum_over_components(ps)
         features = psnn.block().values
         energies = torch.zeros(
             len(torch.unique(batch)), 1, device=features.device, dtype=features.dtype
@@ -103,6 +135,7 @@ class BPPSModel(torch.nn.Module):
             source=features,
         )
         if self.normalize:
+            energies = energies / torch.sqrt(torch.tensor(self.num_pseudo_species))
             energies = energies / self.average_number_of_atoms
         if self.training:
             return energies

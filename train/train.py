@@ -1,4 +1,4 @@
-from torch_alchemical.models import PowerSpectrumModel
+from torch_alchemical.models import AlchemicalModel
 from torch_alchemical.tools.train import LitDataModule, LitModel
 from torch_alchemical.tools.train.initialize import (
     initialize_combining_matrix,
@@ -35,23 +35,22 @@ if __name__ == "__main__":
         ]
     )
 
-    model = PowerSpectrumModel(
+    model = AlchemicalModel(
         unique_numbers=datamodule.unique_numbers,
         basis_normalization_factor=basis_normalization_factor,
         **parameters["model"],
     )
 
+    initialize_composition_layer_weights(model, datamodule, trainable=False)
+    initialize_energies_scale_factor(model, datamodule, trainable=False)
+    initialize_combining_matrix(model, datamodule, trainable=True)
+    model = torch.jit.script(model)
     restart = parameters["litmodel"].pop("restart")
     if restart:
-        model = torch.jit.script(model)
         litmodel = LitModel.load_from_checkpoint(
             restart, model=model, **parameters["litmodel"]
         )
     else:
-        initialize_composition_layer_weights(model, datamodule, trainable=False)
-        initialize_energies_scale_factor(model, datamodule, trainable=False)
-        initialize_combining_matrix(model, datamodule, trainable=True)
-        model = torch.jit.script(model)
         litmodel = LitModel(model=model, **parameters["litmodel"])
 
     early_stopping_callback = parameters["trainer"].pop("early_stopping_callback")

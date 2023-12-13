@@ -1,23 +1,32 @@
-import numpy as np
 import torch_geometric as pyg
+import torch
 from metatensor.torch import Labels, TensorBlock, TensorMap
+from typing import Optional, List
 
 
-class TransformerConv(pyg.nn.TransformerConv):
+class TransformerConv(torch.nn.Module):
+    def __init__(self, *args, **kwargs):
+        super().__init__()
+        self.conv = pyg.nn.TransformerConv(*args, **kwargs).jittable()
+
     def forward(
         self,
         tensormap: TensorMap,
-        edge_index: pyg.typing.Adj,
-        edge_weight: pyg.typing.OptTensor = None,
+        edge_index: torch.Tensor,
+        edge_weight: Optional[torch.Tensor] = None,
     ) -> TensorMap:
-        output_blocks = []
+        output_blocks: List[TensorBlock] = []
         for block in tensormap.blocks():
             labels = Labels(
                 names=["out_features_idx"],
-                values=np.arange(self.out_channels, dtype=np.int32).reshape(-1, 1),
+                values=torch.arange(
+                    self.conv.out_channels,
+                    dtype=torch.int64,
+                    device=block.values.device,
+                ).reshape(-1, 1),
             )
             new_block = TensorBlock(
-                values=super().forward(block.values, edge_index, edge_weight),
+                values=self.conv.forward(block.values, edge_index, edge_weight),
                 samples=block.samples,
                 components=block.components,
                 properties=labels,

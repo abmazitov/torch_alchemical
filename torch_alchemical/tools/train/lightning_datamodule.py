@@ -3,7 +3,7 @@ from torch_alchemical.utils import get_list_of_unique_atomic_numbers
 from torch_alchemical.data import AtomisticDataset
 from torch_alchemical.transforms import NeighborList
 from ase.io import read
-from typing import Optional
+from typing import Optional, Union
 import torch
 from torch_geometric.loader import DataLoader
 
@@ -30,17 +30,22 @@ def train_test_split(dataset, lengths, shuffle=True):
 class LitDataModule(pl.LightningDataModule):
     def __init__(
         self,
-        frames_path: str,
-        train_val_test: list[float],
-        batch_size: int,
-        neighborlist_cutoff_radius: float,
-        target_properties: list[str],
-        shuffle: bool = True,
-        verbose: bool = False,
+        train_frames_path: str,
+        val_frames_path: str,
+        test_frames_path: Optional[str] = None,
+        batch_size: Optional[int] = 16,
+        neighborlist_cutoff_radius: Optional[float] = 5.0,
+        target_properties: Optional[Union[list[str], tuple[str]]] = (
+            "energies",
+            "forces",
+        ),
+        shuffle: Optional[bool] = True,
+        verbose: Optional[bool] = False,
     ):
         super().__init__()
-        self.frames_path = frames_path
-        self.train_val_test = train_val_test
+        self.train_frames_path = train_frames_path
+        self.val_frames_path = val_frames_path
+        self.test_frames_path = test_frames_path
         self.batch_size = batch_size
         self.neighborlist_cutoff_radius = neighborlist_cutoff_radius
         self.target_properties = target_properties
@@ -48,30 +53,45 @@ class LitDataModule(pl.LightningDataModule):
         self.shuffle = shuffle
 
     def prepare_data(self):
-        self.frames = read(self.frames_path, ":")
-        self.unique_numbers = get_list_of_unique_atomic_numbers(self.frames)
+        self.train_frames = read(self.train_frames_path, ":")
+        self.val_frames = read(self.val_frames_path, ":")
+        if self.test_frames_path is not None:
+            self.test_frames = read(self.test_frames_path, ":")
+        else:
+            self.test_frames = []
+        self.unique_numbers = get_list_of_unique_atomic_numbers(
+            self.train_frames + self.val_frames + self.test_frames
+        )
 
     def setup(self, stage: Optional[str] = None):
         if stage in (None, "prepare"):
             transforms = [
                 NeighborList(cutoff_radius=self.neighborlist_cutoff_radius),
             ]
-            dataset = AtomisticDataset(
-                self.frames,
+            self.train_dataset = AtomisticDataset(
+                self.train_frames,
                 target_properties=self.target_properties,
                 transforms=transforms,
                 verbose=self.verbose,
             )
-            (
-                self.train_dataset,
-                self.val_dataset,
-                self.test_dataset,
-            ) = train_test_split(dataset, self.train_val_test, shuffle=self.shuffle)
+            self.val_dataset = AtomisticDataset(
+                self.val_frames,
+                target_properties=self.target_properties,
+                transforms=transforms,
+                verbose=self.verbose,
+            )
+            if self.test_frames_path is not None:
+                self.test_dataset = AtomisticDataset(
+                    self.test_frames,
+                    target_properties=self.target_properties,
+                    transforms=transforms,
+                    verbose=self.verbose,
+                )
+            else:
+                self.test_dataset = []
 
     def train_dataloader(self):
         batch_size = self.batch_size
-        if self.batch_size == "len":
-            batch_size = len(self.train_dataset)
         dataloader = DataLoader(
             self.train_dataset, batch_size=batch_size, shuffle=self.shuffle
         )
@@ -79,15 +99,11 @@ class LitDataModule(pl.LightningDataModule):
 
     def val_dataloader(self):
         batch_size = self.batch_size
-        if self.batch_size == "len":
-            batch_size = len(self.val_dataset)
         dataloader = DataLoader(self.val_dataset, batch_size=batch_size, shuffle=False)
         return dataloader
 
     def test_dataloader(self):
         batch_size = self.batch_size
-        if self.batch_size == "len":
-            batch_size = len(self.test_dataset)
         dataloader = DataLoader(
             self.test_dataset, batch_size=batch_size, shuffle=self.shuffle
         )

@@ -15,7 +15,7 @@ from torch_alchemical.utils import get_compositions_from_numbers
 class PowerSpectrumModel(torch.nn.Module):
     def __init__(
         self,
-        hidden_sizes: int,
+        hidden_sizes: list[int],
         output_size: int,
         unique_numbers: Union[list, np.ndarray],
         cutoff: float,
