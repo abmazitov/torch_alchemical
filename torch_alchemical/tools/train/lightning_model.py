@@ -14,6 +14,7 @@ class LitModel(pl.LightningModule):
         forces_weight: float,
         lr: float = 1e-3,
         weight_decay: float = 1e-5,
+        log_wandb_tables: bool = True,
     ):
         super().__init__()
         self.model = model
@@ -21,6 +22,7 @@ class LitModel(pl.LightningModule):
         self.forces_weight = forces_weight
         self.lr = lr
         self.weight_decay = weight_decay
+        self.log_wandb_tables = log_wandb_tables
 
     def on_train_epoch_start(self):
         self.train_energies_mae = 0.0
@@ -119,7 +121,7 @@ class LitModel(pl.LightningModule):
 
     def on_train_epoch_end(self):
         num_batches = (
-            len(self.trainer.datamodule.train_dataloader()) * self.trainer.num_devices
+            len(self.trainer.datamodule.train_dataloader()) / self.trainer.num_devices
         )
         train_energies_mae = self.train_energies_mae / num_batches
         train_forces_mae = self.train_forces_mae / num_batches
@@ -157,6 +159,7 @@ class LitModel(pl.LightningModule):
             on_step=True,
             on_epoch=True,
             prog_bar=True,
+            sync_dist=True,
             batch_size=self.trainer.datamodule.batch_size,
         )
         self.log(
@@ -165,6 +168,7 @@ class LitModel(pl.LightningModule):
             on_step=True,
             on_epoch=True,
             prog_bar=True,
+            sync_dist=True,
             batch_size=self.trainer.datamodule.batch_size,
         )
         self.val_energies_mae += val_energies_mae
@@ -176,7 +180,7 @@ class LitModel(pl.LightningModule):
 
     def on_validation_epoch_end(self):
         num_batches = (
-            len(self.trainer.datamodule.val_dataloader()) * self.trainer.num_devices
+            len(self.trainer.datamodule.val_dataloader()) / self.trainer.num_devices
         )
         val_energies_mae = self.val_energies_mae / num_batches
         val_forces_mae = self.val_forces_mae / num_batches
@@ -184,14 +188,6 @@ class LitModel(pl.LightningModule):
         print(f"Energies MAE: Val {val_energies_mae:.3f}")
         print(f"Forces MAE: Val {val_forces_mae:.3f}")
         if isinstance(self.logger, pl.loggers.WandbLogger):
-            log_wandb_data(
-                self.predicted_energies,
-                self.predicted_forces,
-                self.target_energies,
-                self.target_forces,
-                val_energies_mae,
-                val_forces_mae,
-            )
             torch.save(
                 self.predicted_energies,
                 os.path.join(self.logger.experiment.dir, "val_predicted_energies.pt"),
@@ -208,6 +204,15 @@ class LitModel(pl.LightningModule):
                 self.target_forces,
                 os.path.join(self.logger.experiment.dir, "val_target_forces.pt"),
             )
+            if self.log_wandb_tables:
+                log_wandb_data(
+                    self.predicted_energies,
+                    self.predicted_forces,
+                    self.target_energies,
+                    self.target_forces,
+                    val_energies_mae,
+                    val_forces_mae,
+                )
 
     def configure_optimizers(self):
         optimizer = torch.optim.Adam(
