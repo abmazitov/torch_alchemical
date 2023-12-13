@@ -2,9 +2,10 @@ from .activations.relu import ReLU
 from .activations.silu import SiLU
 from .activations.selu import SELU
 
-from .graph.gat_conv import GATConv, MultiChannelGATConv
+# from .graph.gat_conv import GATConv, MultiChannelGATConv
 from .graph.gcn_conv import GCNConv, MultiChannelGCNConv
-from .graph.transformer_conv import TransformerConv
+
+# from .graph.transformer_conv import TransformerConv
 from .linear import Linear
 from .linear_map import LinearMap
 from .multi_channel_linear import MultiChannelLinear
@@ -34,8 +35,8 @@ __all__ = [
     "WeightedSSELoss",
     "MultiChannelLinear",
     "AlchemicalEmbedding",
-    "GATConv",
-    "MultiChannelGATConv",
+    # "GATConv",
+    # "MultiChannelGATConv",
     "GCNConv",
     "MultiChannelGCNConv",
     "TransformerConv",
