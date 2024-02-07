@@ -8,6 +8,5 @@
     "basis_cutoff_power_spectrum": 50,
     "radial_basis_type": "le",
     "trainable_basis": true,
-    "num_pseudo_species": 4,
-    "device": "cpu"
+    "num_pseudo_species": 4
 }

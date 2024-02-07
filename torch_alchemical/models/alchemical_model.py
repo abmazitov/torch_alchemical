@@ -30,7 +30,6 @@ class AlchemicalModel(torch.nn.Module):
         basis_scale: float = 3.0,
         energies_scale_factor: float = 1.0,
         average_number_of_atoms: float = 1.0,
-        device: torch.device = None,
     ):
         super().__init__()
         if isinstance(unique_numbers, np.ndarray):
@@ -52,7 +51,6 @@ class AlchemicalModel(torch.nn.Module):
             basis_scale=basis_scale,
             trainable_basis=trainable_basis,
             num_pseudo_species=num_pseudo_species,
-            device=device,
         )
         ps_input_size = self.ps_features_layer.num_features
         if self.normalize:

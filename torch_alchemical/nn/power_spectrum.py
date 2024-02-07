@@ -1,10 +1,9 @@
-from typing import Union, Optional
+from typing import Union
 import numpy as np
 import torch
 from torch_spex.spherical_expansions import SphericalExpansion
 from torch_alchemical.utils import (
     get_torch_spex_dict,
-    get_torch_spex_dict_from_data_lists,
 )
 from metatensor.torch import TensorBlock, TensorMap, Labels
 
@@ -20,7 +19,6 @@ class PowerSpectrumFeatures(torch.nn.Module):
         basis_scale: float = 3.0,
         trainable_basis: bool = True,
         num_pseudo_species: int = None,
-        device: torch.device = None,
     ):
         super().__init__()
         if isinstance(all_species, np.ndarray):
@@ -33,7 +31,6 @@ class PowerSpectrumFeatures(torch.nn.Module):
         self.basis_normalization_factor = basis_normalization_factor
         self.trainable_basis = trainable_basis
         self.num_pseudo_species = num_pseudo_species
-        self.device = device
         hypers = {
             "cutoff radius": self.cutoff_radius,
             "radial basis": {
@@ -51,7 +48,6 @@ class PowerSpectrumFeatures(torch.nn.Module):
         self.spex_calculator = SphericalExpansion(
             hypers=hypers,
             all_species=self.all_species,
-            device=self.device,
         )
         self.l_max = self.spex_calculator.vector_expansion_calculator.l_max
         self.ps_calculator = PowerSpectrum(self.l_max, all_species)
