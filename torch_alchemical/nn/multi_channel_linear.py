@@ -46,7 +46,7 @@ class MultiChannelLinear(torch.nn.Module):
                 out_values += self.bias
             out_values = out_values.transpose(0, 1)
             labels = Labels(
-                names=["out_features_idx"],
+                names=["_"],
                 values=torch.arange(
                     self.out_features,
                     dtype=torch.int64,

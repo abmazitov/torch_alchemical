@@ -11,7 +11,6 @@ from .linear_map import LinearMap
 from .multi_channel_linear import MultiChannelLinear
 from .power_spectrum import PowerSpectrumFeatures
 
-# from .radial_spectrum import RadialSpectrumFeatures
 from .normalization.layer_norm import LayerNorm
 from .loss_functions.mae import MAELoss, WeightedMAELoss
 from .loss_functions.mse import MSELoss, WeightedMSELoss

@@ -14,7 +14,7 @@ class Linear(torch.nn.Module):
         output_blocks: list[TensorBlock] = []
         for block in tensormap.blocks():
             labels = Labels(
-                names=["out_features_idx"],
+                names=["_"],
                 values=torch.arange(
                     self.linear.out_features,
                     dtype=torch.int64,
