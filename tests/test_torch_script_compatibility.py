@@ -1,5 +1,6 @@
 from torch_alchemical import nn
 import metatensor
+from metatensor.torch import Labels
 import torch
 from torch_alchemical.data import AtomisticDataset
 from torch_alchemical.transforms import NeighborList
@@ -22,23 +23,10 @@ class TestNNLayers:
 
     def test_alchemical_embedding(self):
         embedding = torch.jit.script(
-            nn.AlchemicalEmbedding(
-                self.unique_numbers, self.num_channels, self.contraction_layer
-            )
+            nn.AlchemicalEmbedding(self.unique_numbers, self.contraction_layer)
         )
         with torch.no_grad():
             embedding(self.ps)
-
-    def test_multi_channel_linear(self):
-        mclinear = torch.jit.script(
-            nn.MultiChannelLinear(
-                self.ps_input_size,
-                1,
-                self.num_channels,
-            )
-        )
-        with torch.no_grad():
-            mclinear(self.emb_ps)
 
     def test_linear(self):
         linear = torch.jit.script(nn.Linear(self.ps_input_size, 1))
@@ -48,7 +36,9 @@ class TestNNLayers:
     def test_linear_map(self):
         linear_map = torch.jit.script(
             nn.LinearMap(
-                keys=self.ps.keys.values.flatten().tolist(),
+                keys=Labels(
+                    names=["a_i"], values=torch.tensor(self.unique_numbers).view(-1, 1)
+                ),
                 in_features=self.ps_input_size,
                 out_features=1,
                 bias=False,

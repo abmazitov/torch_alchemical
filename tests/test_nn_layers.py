@@ -1,5 +1,6 @@
 import torch
 import metatensor
+from metatensor.torch import Labels
 from torch_alchemical import nn
 
 
@@ -23,25 +24,11 @@ class TestNNLayers:
 
     def test_alchemical_embedding(self):
         torch.manual_seed(0)
-        layer = nn.AlchemicalEmbedding(
-            self.unique_numbers, self.num_channels, self.contraction_layer
-        )
+        layer = nn.AlchemicalEmbedding(self.unique_numbers, self.contraction_layer)
         ref_ps = metatensor.torch.load(
             "./tests/data/emb_ps_test_data.npz",
         )
         evaluate_layer(layer, self.ps, ref_ps)
-
-    def test_multi_channel_linear(self):
-        torch.manual_seed(0)
-        layer = nn.MultiChannelLinear(
-            self.ps_input_size,
-            1,
-            self.num_channels,
-        )
-        ref_ps = metatensor.torch.load(
-            "./tests/data/mclinear_ps_test_data.npz",
-        )
-        evaluate_layer(layer, self.emb_ps, ref_ps)
 
     def test_linear(self):
         torch.manual_seed(0)
@@ -53,9 +40,10 @@ class TestNNLayers:
 
     def test_linearmap(self):
         torch.manual_seed(0)
-        layer = nn.LinearMap(
-            self.ps.keys.values.flatten().tolist(), self.ps_input_size, 1
+        linear_layer_keys = Labels(
+            names=["a_i"], values=torch.tensor(self.unique_numbers).view(-1, 1)
         )
+        layer = nn.LinearMap(linear_layer_keys, self.ps_input_size, 1)
         ref_ps = metatensor.torch.load(
             "./tests/data/linearmap_ps_test_data.npz",
         )

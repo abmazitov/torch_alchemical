@@ -6,8 +6,6 @@ from typing import Union
 from torch_alchemical.nn import (
     LayerNorm,
     AlchemicalEmbedding,
-    MultiChannelGCNConv,
-    MultiChannelLinear,
     PowerSpectrumFeatures,
     SiLU,
 )
@@ -59,9 +57,10 @@ class AlchemicalGCN(torch.nn.Module):
         ps_input_size = self.ps_features_layer.num_features
         if self.normalize:
             self.layer_norm = LayerNorm(ps_input_size)
-        contraction_layer = (
-            self.ps_features_layer.spex_calculator.vector_expansion_calculator.radial_basis_calculator.combination_matrix
+        vex_calculator = (
+            self.ps_features_layer.spex_calculator.vector_expansion_calculator
         )
+        contraction_layer = vex_calculator.radial_basis_calculator.combination_matrix
         self.embedding = AlchemicalEmbedding(
             unique_numbers=unique_numbers,
             num_pseudo_species=num_pseudo_species,

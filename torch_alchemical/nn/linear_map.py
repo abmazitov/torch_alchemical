@@ -7,19 +7,19 @@ class LinearMap(torch.nn.Module):
         super().__init__()
         self.keys = keys
         self.linear = torch.nn.ModuleDict()
-        for key in keys:
+        for i in range(len(keys)):
             layer = torch.nn.Linear(*args, **kwargs)
             layer.weight.data.normal_(mean=0.0, std=layer.in_features ** (-0.5))
             if layer.bias is not None:
                 layer.bias.data.zero_()
-            self.linear[str(key)] = layer
+            self.linear[str(i)] = layer
 
     def forward(self, tensormap: TensorMap) -> TensorMap:
         output_blocks: list[TensorBlock] = []
         for key, linear in self.linear.items():
-            block = tensormap.block({"a_i": int(key)})
+            block = tensormap.block(int(key))
             labels = Labels(
-                names=["_"],
+                names=["property"],
                 values=torch.arange(
                     linear.out_features, dtype=torch.int64, device=block.values.device
                 ).reshape(-1, 1),

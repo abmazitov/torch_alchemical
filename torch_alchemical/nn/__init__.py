@@ -3,12 +3,11 @@ from .activations.silu import SiLU
 from .activations.selu import SELU
 
 # from .graph.gat_conv import GATConv, MultiChannelGATConv
-from .graph.gcn_conv import GCNConv, MultiChannelGCNConv
+from .graph.gcn_conv import GCNConv
 
 # from .graph.transformer_conv import TransformerConv
 from .linear import Linear
 from .linear_map import LinearMap
-from .multi_channel_linear import MultiChannelLinear
 from .power_spectrum import PowerSpectrumFeatures
 
 from .normalization.layer_norm import LayerNorm
@@ -24,7 +23,6 @@ __all__ = [
     "SiLU",
     "SELU",
     "PowerSpectrumFeatures",
-    # "RadialSpectrumFeatures",
     "LayerNorm",
     "MAELoss",
     "WeightedMAELoss",
@@ -32,11 +30,6 @@ __all__ = [
     "WeightedMSELoss",
     "SSELoss",
     "WeightedSSELoss",
-    "MultiChannelLinear",
     "AlchemicalEmbedding",
-    # "GATConv",
-    # "MultiChannelGATConv",
     "GCNConv",
-    "MultiChannelGCNConv",
-    "TransformerConv",
 ]

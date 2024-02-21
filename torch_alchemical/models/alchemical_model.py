@@ -2,15 +2,16 @@ import numpy as np
 import torch
 
 from typing import Union
+from metatensor.torch import Labels
+import metatensor.torch
 
 from torch_alchemical.nn import (
     LayerNorm,
     AlchemicalEmbedding,
-    MultiChannelLinear,
     PowerSpectrumFeatures,
+    LinearMap,
     SiLU,
 )
-from torch_alchemical.operations import sum_over_components
 from torch_alchemical.utils import get_compositions_from_numbers
 
 
@@ -55,31 +56,41 @@ class AlchemicalModel(torch.nn.Module):
         ps_input_size = self.ps_features_layer.num_features
         if self.normalize:
             self.layer_norm = LayerNorm(ps_input_size)
-        contraction_layer = (
-            self.ps_features_layer.spex_calculator.vector_expansion_calculator.radial_basis_calculator.combination_matrix
+        vex_calculator = (
+            self.ps_features_layer.spex_calculator.vector_expansion_calculator
         )
+        contraction_layer = vex_calculator.radial_basis_calculator.combination_matrix
         self.embedding = AlchemicalEmbedding(
             unique_numbers=unique_numbers,
-            num_pseudo_species=num_pseudo_species,
             contraction_layer=contraction_layer,
         )
         layer_size = [ps_input_size] + hidden_sizes
         layers = []
+        linear_layer_keys = Labels(
+            names=["a_i", "pseudo_species"],
+            values=torch.stack(
+                [
+                    torch.tensor([a_i, b_i])
+                    for b_i in range(self.num_pseudo_species)
+                    for a_i in self.unique_numbers
+                ]
+            ),
+        )
         for layer_index in range(1, len(layer_size)):
             layers.append(
-                MultiChannelLinear(
+                LinearMap(
+                    keys=linear_layer_keys,
                     in_features=layer_size[layer_index - 1],
                     out_features=layer_size[layer_index],
-                    num_channels=self.num_pseudo_species,
                     bias=False,
                 )
             )
             layers.append(SiLU())
         layers.append(
-            MultiChannelLinear(
+            LinearMap(
+                keys=linear_layer_keys,
                 in_features=layer_size[-1],
-                out_features=output_size,
-                num_channels=self.num_pseudo_species,
+                out_features=1,
                 bias=False,
             )
         )
@@ -102,17 +113,9 @@ class AlchemicalModel(torch.nn.Module):
         ps = self.embedding(ps)
         for layer in self.nn:
             ps = layer(ps)
-        psnn = sum_over_components(ps)
-        psnn = psnn.keys_to_samples("a_i")
-        features = psnn.block().values
-        energies = torch.zeros(
-            len(torch.unique(batch)), 1, device=features.device, dtype=features.dtype
-        )
-        energies.index_add_(
-            dim=0,
-            index=batch,
-            source=features,
-        )
+        ps = ps.keys_to_samples(ps.keys.names)
+        ps = metatensor.torch.sum_over_samples(ps, ["center", "a_i", "pseudo_species"])
+        energies = ps.block().values
         if self.normalize:
             energies = energies / torch.sqrt(torch.tensor(self.num_pseudo_species))
             energies = energies / self.average_number_of_atoms

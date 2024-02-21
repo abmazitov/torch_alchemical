@@ -2,6 +2,7 @@ import numpy as np
 import torch
 
 from typing import Union
+from metatensor.torch import Labels
 
 from torch_alchemical.nn import (
     LayerNorm,
@@ -54,10 +55,13 @@ class BPPSModel(torch.nn.Module):
             self.layer_norm = LayerNorm(ps_input_size)
         layer_size = [ps_input_size] + hidden_sizes
         layers = []
+        linear_layer_keys = Labels(
+            names=["a_i"], values=torch.tensor(self.unique_numbers).view(-1, 1)
+        )
         for layer_index in range(1, len(layer_size)):
             layers.append(
                 LinearMap(
-                    keys=self.unique_numbers,
+                    keys=linear_layer_keys,
                     in_features=layer_size[layer_index - 1],
                     out_features=layer_size[layer_index],
                     bias=False,
@@ -66,7 +70,7 @@ class BPPSModel(torch.nn.Module):
             layers.append(SiLU())
         layers.append(
             LinearMap(
-                keys=self.unique_numbers,
+                keys=linear_layer_keys,
                 in_features=layer_size[-1],
                 out_features=output_size,
                 bias=False,
