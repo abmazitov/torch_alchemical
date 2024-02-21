@@ -12,6 +12,5 @@
     "normalize": true,
     "basis_normalization_factor": 1.0,
     "average_number_of_atoms": 1.0,
-    "energies_scale_factor": 1.0,
-    "device": "cpu"
+    "energies_scale_factor": 1.0
 }

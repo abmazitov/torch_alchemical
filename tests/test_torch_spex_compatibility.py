@@ -66,7 +66,7 @@ class TestTorchSpexCompatibility:
             batch=self.batch.batch,
         )
         calculator = SphericalExpansion(
-            hypers=self.hypers, all_species=self.all_species, device=self.device
+            hypers=self.hypers, all_species=self.all_species
         )
         with torch.no_grad():
             data_tm = calculator.forward(**data_dict)

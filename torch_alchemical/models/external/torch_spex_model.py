@@ -261,7 +261,10 @@ class PowerSpectrum(torch.nn.Module):
                 values=ps_values_ai,
                 samples=block_ai_l.samples,
                 components=[],
-                properties=Labels.range("property", ps_values_ai.shape[-1]),
+                properties=Labels(
+                    names=["property"],
+                    values=ps_values_ai.shape[-1],
+                ),
             )
             keys.append([a_i])
             blocks.append(block)

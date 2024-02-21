@@ -14,7 +14,6 @@ torch.manual_seed(0)
 
 
 class TestCalculators:
-    device = "cpu"
     frames = read("./tests/data/hea_bulk_test_sample.xyz", index=":")
     all_species = np.unique(np.hstack([frame.numbers for frame in frames])).tolist()
     with open("./tests/configs/default_hypers_alchemical.json", "r") as f:
@@ -35,7 +34,6 @@ class TestCalculators:
             radial_basis_type=self.hypers["radial basis"]["type"],
             trainable_basis=self.hypers["radial basis"]["mlp"],
             num_pseudo_species=self.hypers["alchemical"],
-            device=self.device,
         )
         with torch.no_grad():
             ps = calculator(
