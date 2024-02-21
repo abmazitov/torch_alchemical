@@ -18,20 +18,18 @@ class MultiChannelLinear(torch.nn.Module):
         self.num_channels = num_channels
         self.device = device
         self.dtype = dtype
-        self.weight = torch.nn.Parameter(
-            torch.randn(
-                (num_channels, in_features, out_features),
-                device=device,
-                dtype=dtype,
-            )
+        self.linear = torch.nn.ModuleList(
+            [
+                torch.nn.Linear(
+                    in_features, out_features, bias=bias, device=device, dtype=dtype
+                )
+                for _ in range(num_channels)
+            ]
         )
-        self.weight.data.normal_(mean=0.0, std=in_features ** (-0.5))
-        if bias:
-            self.bias = torch.nn.Parameter(
-                torch.zeros((num_channels, 1, out_features), device=device, dtype=dtype)
-            )
-        else:
-            self.register_parameter("bias", None)
+        for layer in self.linear:
+            layer.weight.data.normal_(mean=0.0, std=in_features ** (-0.5))
+            if bias:
+                layer.bias.data.zero_()
 
     def forward(self, tensormap: TensorMap) -> TensorMap:
         output_blocks: list[TensorBlock] = []
@@ -41,9 +39,10 @@ class MultiChannelLinear(torch.nn.Module):
             )  # only a single components group is supported
             assert len(block.components[0].values) == self.num_channels
             values = block.values.transpose(0, 1)
-            out_values = torch.bmm(values, self.weight)
-            if self.bias is not None:
-                out_values += self.bias
+            out_values = []
+            for i, layer in enumerate(self.linear):
+                out_values.append(layer(values[i]))
+            out_values = torch.stack(out_values, dim=0)
             out_values = out_values.transpose(0, 1)
             labels = Labels(
                 names=["_"],

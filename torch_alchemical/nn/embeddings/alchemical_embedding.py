@@ -22,6 +22,7 @@ class AlchemicalEmbedding(torch.nn.Module):
                 len(block.samples),
                 len(self.unique_numbers),
                 device=block.values.device,
+                dtype=block.values.dtype,
             )
             one_hot_ai[:, i] = 1.0
             pseudo_species_weights = self.contraction_layer(one_hot_ai)
