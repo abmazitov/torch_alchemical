@@ -53,7 +53,7 @@ class MultiChannelLinear(torch.nn.Module):
                 ).reshape(-1, 1),
             )
             new_block = TensorBlock(
-                values=out_values,
+                values=out_values.contiguous(),
                 samples=block.samples,
                 components=block.components,
                 properties=labels,

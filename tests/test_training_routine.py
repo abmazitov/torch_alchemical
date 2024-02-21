@@ -46,5 +46,6 @@ class TestTrainingRoutine:
             enable_checkpointing=False,
             enable_progress_bar=False,
             logger=False,
+            accelerator="cpu",
         )
         trainer.fit(litmodel, datamodule)
