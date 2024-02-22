@@ -84,6 +84,7 @@ class TestModels:
         model = torch.jit.script(
             AlchemicalModel(
                 unique_numbers=self.all_species,
+                contract_center_species=False,
                 **self.default_model_parameters,
             )
         )

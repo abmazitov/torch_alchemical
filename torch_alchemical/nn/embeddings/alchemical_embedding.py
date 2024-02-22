@@ -35,9 +35,13 @@ class AlchemicalEmbedding(torch.nn.Module):
                     properties=block.properties,
                 )
                 output_blocks.append(new_block)
-                output_key_values.append(torch.cat((key.values, torch.tensor([j]))))
+                output_key_values.append(
+                    torch.cat(
+                        (key.values, torch.tensor([j], device=block.values.device))
+                    )
+                )
         keys = Labels(
-            names=tensormap.keys.names + ["pseudo_species"],
+            names=tensormap.keys.names + ["b_i"],
             values=torch.stack(output_key_values),
         )
         return TensorMap(keys=keys, blocks=output_blocks)
