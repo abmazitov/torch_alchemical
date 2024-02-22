@@ -1,3 +1,5 @@
+from typing import Optional
+
 import torch
 
 
@@ -9,10 +11,10 @@ class WeightedSSELoss(torch.nn.Module):
 
     def forward(
         self,
-        predicted_energies: torch.Tensor = None,
-        target_energies: torch.Tensor = None,
-        predicted_forces: torch.Tensor = None,
-        target_forces: torch.Tensor = None,
+        predicted_energies: Optional[torch.Tensor] = None,
+        target_energies: Optional[torch.Tensor] = None,
+        predicted_forces: Optional[torch.Tensor] = None,
+        target_forces: Optional[torch.Tensor] = None,
     ):
         loss = 0
         weights = []
@@ -40,10 +42,10 @@ class WeightedSSELoss(torch.nn.Module):
 class SSELoss(torch.nn.Module):
     def forward(
         self,
-        predicted_energies: torch.Tensor = None,
-        target_energies: torch.Tensor = None,
-        predicted_forces: torch.Tensor = None,
-        target_forces: torch.Tensor = None,
+        predicted_energies: Optional[torch.Tensor] = None,
+        target_energies: Optional[torch.Tensor] = None,
+        predicted_forces: Optional[torch.Tensor] = None,
+        target_forces: Optional[torch.Tensor] = None,
     ):
         loss = 0
         predicted_tensors = []

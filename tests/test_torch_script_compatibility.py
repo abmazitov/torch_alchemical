@@ -1,14 +1,16 @@
-from torch_alchemical import nn
-import metatensor
-from metatensor.torch import Labels
-import torch
-from torch_alchemical.data import AtomisticDataset
-from torch_alchemical.transforms import NeighborList
-from torch_geometric.loader import DataLoader
-from torch_alchemical.models import PowerSpectrumModel, BPPSModel, AlchemicalModel
-from ase.io import read
 import json
+
+import metatensor
 import numpy as np
+import torch
+from ase.io import read
+from metatensor.torch import Labels
+from torch_geometric.loader import DataLoader
+
+from torch_alchemical import nn
+from torch_alchemical.data import AtomisticDataset
+from torch_alchemical.models import AlchemicalModel, BPPSModel, PowerSpectrumModel
+from torch_alchemical.transforms import NeighborList
 
 torch.set_default_dtype(torch.float64)
 

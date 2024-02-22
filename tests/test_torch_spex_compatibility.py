@@ -1,16 +1,17 @@
-from ase.io import read
 import json
-import torch
+
+import metatensor
 import numpy as np
-from torch_alchemical.utils import get_torch_spex_dict
+import torch
+from ase.io import read
+from torch.utils.data import DataLoader as SpexDataLoader
+from torch_geometric.loader import DataLoader
+from torch_spex.spherical_expansions import SphericalExpansion
+from torch_spex.structures import InMemoryDataset, TransformerNeighborList, collate_nl
+
 from torch_alchemical.data import AtomisticDataset
 from torch_alchemical.transforms import NeighborList
-from torch_geometric.loader import DataLoader
-from torch.utils.data import DataLoader as SpexDataLoader
-from torch_spex.structures import InMemoryDataset, TransformerNeighborList, collate_nl
-from torch_spex.spherical_expansions import SphericalExpansion
-import metatensor
-
+from torch_alchemical.utils import get_torch_spex_dict
 
 torch.set_default_dtype(torch.float64)
 

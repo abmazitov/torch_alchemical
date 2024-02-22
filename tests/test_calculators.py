@@ -1,13 +1,14 @@
-from ase.io import read
 import json
-import torch
-import numpy as np
-from torch_alchemical.data import AtomisticDataset
-from torch_alchemical.transforms import NeighborList
-from torch_geometric.loader import DataLoader
-from torch_alchemical.nn import PowerSpectrumFeatures
-import metatensor
 
+import metatensor
+import numpy as np
+import torch
+from ase.io import read
+from torch_geometric.loader import DataLoader
+
+from torch_alchemical.data import AtomisticDataset
+from torch_alchemical.nn import PowerSpectrumFeatures
+from torch_alchemical.transforms import NeighborList
 
 torch.set_default_dtype(torch.float64)
 torch.manual_seed(0)

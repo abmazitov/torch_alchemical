@@ -1,9 +1,11 @@
+import os
+
 import lightning.pytorch as pl
 import torch
-import os
-from torch_alchemical.nn import WeightedSSELoss, MAELoss
-from torch_alchemical.utils import get_autograd_forces, get_compositions_from_numbers
+
+from torch_alchemical.nn import MAELoss, WeightedSSELoss
 from torch_alchemical.tools.logging.wandb import log_wandb_data
+from torch_alchemical.utils import get_autograd_forces, get_compositions_from_numbers
 
 
 class LitModel(pl.LightningModule):

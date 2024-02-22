@@ -1,5 +1,6 @@
-import torch
 from typing import Optional
+
+import torch
 
 
 def get_compositions_from_numbers(
@@ -13,11 +14,13 @@ def get_compositions_from_numbers(
     _, counts = torch.unique(batch, return_counts=True)
     dtype = dtype if dtype is not None else torch.float64
     ptr = torch.cat([torch.tensor([0], device=device), torch.cumsum(counts, dim=0)])
-    numbers = [numbers[ptr[i] : ptr[i + 1]] for i in range(len(ptr) - 1)]
+    splitted_numbers = [numbers[ptr[i] : ptr[i + 1]] for i in range(len(ptr) - 1)]
     unique_numbers = torch.tensor(
-        unique_numbers, dtype=numbers[0].dtype, device=numbers[0].device
+        unique_numbers,
+        dtype=splitted_numbers[0].dtype,
+        device=splitted_numbers[0].device,
     )
-    for number in numbers:
+    for number in splitted_numbers:
         composition = torch.zeros(
             len(unique_numbers),
             dtype=dtype,

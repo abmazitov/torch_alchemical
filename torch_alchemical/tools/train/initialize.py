@@ -1,4 +1,5 @@
 import torch
+
 from torch_alchemical.utils import (
     get_compositions_from_numbers,
     get_species_coupling_matrix,
@@ -91,11 +92,10 @@ def rescale_energies_and_forces(model, datamodule, scale_factor):
 
 def initialize_combining_matrix(model, datamodule, trainable=True):
     assert hasattr(model, "ps_features_layer")
-    radial_basis_calculator = (
-        model.ps_features_layer.spex_calculator.vector_expansion_calculator.radial_basis_calculator
-    )
+    vex_calculator = model.ps_features_layer.spex_calculator.vector_expansion_calculator
+    radial_basis_calculator = vex_calculator.radial_basis_calculator
     n_pseudo_species = radial_basis_calculator.n_pseudo_species
-    model.ps_features_layer.spex_calculator.vector_expansion_calculator.radial_basis_calculator.combination_matrix.weight = torch.nn.Parameter(
+    radial_basis_calculator.combination_matrix.weight = torch.nn.Parameter(
         get_species_coupling_matrix(
             datamodule.unique_numbers, n_pseudo_species
         ).contiguous(),

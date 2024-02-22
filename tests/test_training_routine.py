@@ -1,15 +1,17 @@
+import json
+import warnings
+
+import lightning.pytorch as pl
+import torch
+
 from torch_alchemical.models import AlchemicalModel
 from torch_alchemical.tools.train import LitDataModule, LitModel
 from torch_alchemical.tools.train.initialize import (
+    initialize_average_number_of_atoms,
     initialize_combining_matrix,
     initialize_composition_layer_weights,
-    initialize_average_number_of_atoms,
     initialize_energies_forces_scale_factor,
 )
-import json
-import torch
-import lightning.pytorch as pl
-import warnings
 
 warnings.filterwarnings("ignore")
 

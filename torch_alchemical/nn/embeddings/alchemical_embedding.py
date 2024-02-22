@@ -1,5 +1,5 @@
 import torch
-from metatensor.torch import TensorBlock, TensorMap, Labels
+from metatensor.torch import Labels, TensorBlock, TensorMap
 
 
 class AlchemicalEmbedding(torch.nn.Module):

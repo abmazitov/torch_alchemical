@@ -1,5 +1,5 @@
-import wandb
 import torch
+import wandb
 
 
 def get_wandb_datatables(

@@ -1,13 +1,14 @@
-from ase.io import read
 import json
-import torch
-import numpy as np
-from torch_alchemical.data import AtomisticDataset
-from torch_alchemical.transforms import NeighborList
-from torch_geometric.loader import DataLoader
-from torch_alchemical.models import PowerSpectrumModel, BPPSModel, AlchemicalModel
-from torch_alchemical.utils import get_autograd_forces
 
+import numpy as np
+import torch
+from ase.io import read
+from torch_geometric.loader import DataLoader
+
+from torch_alchemical.data import AtomisticDataset
+from torch_alchemical.models import AlchemicalModel, BPPSModel, PowerSpectrumModel
+from torch_alchemical.transforms import NeighborList
+from torch_alchemical.utils import get_autograd_forces
 
 torch.set_default_dtype(torch.float64)
 torch.manual_seed(0)

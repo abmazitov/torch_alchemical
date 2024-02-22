@@ -1,11 +1,12 @@
-from ase.io import read
 import numpy as np
 import torch
-from torch_alchemical.data import AtomisticDataset
+from ase.io import read
 from torch_geometric.loader import DataLoader
+
+from torch_alchemical.data import AtomisticDataset
 from torch_alchemical.utils import (
-    get_compositions_from_numbers,
     get_autograd_forces,
+    get_compositions_from_numbers,
     get_target_properties,
 )
 
