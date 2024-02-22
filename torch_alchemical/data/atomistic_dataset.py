@@ -1,3 +1,5 @@
+from typing import Optional
+
 import torch
 from ase import Atoms
 from torch_geometric.data import Data
@@ -14,8 +16,8 @@ class AtomisticDataset(torch.utils.data.Dataset):
         self,
         frames: list[Atoms],
         target_properties: list[str],
-        transforms: list[BaseTransform] = None,
-        verbose: bool = False,
+        transforms: Optional[list[BaseTransform]] = None,
+        verbose: Optional[bool] = False,
     ):
         super().__init__()
         assert set(target_properties).issubset(AVAILABLE_TARGET_PROPERTIES)

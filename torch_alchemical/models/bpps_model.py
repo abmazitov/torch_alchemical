@@ -1,15 +1,10 @@
+from typing import Union
+
 import numpy as np
 import torch
-
-from typing import Union
 from metatensor.torch import Labels
 
-from torch_alchemical.nn import (
-    LayerNorm,
-    LinearMap,
-    PowerSpectrumFeatures,
-    SiLU,
-)
+from torch_alchemical.nn import LayerNorm, LinearMap, PowerSpectrumFeatures, SiLU
 from torch_alchemical.utils import get_compositions_from_numbers
 
 

@@ -1,11 +1,12 @@
-from ase.io import read
 import json
-import torch
+
 import numpy as np
-from torch_alchemical.data import AtomisticDataset
-from torch_alchemical.transforms import NeighborList
+import torch
+from ase.io import read
 from torch_geometric.loader import DataLoader
 
+from torch_alchemical.data import AtomisticDataset
+from torch_alchemical.transforms import NeighborList
 
 torch.set_default_dtype(torch.float64)
 

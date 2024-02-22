@@ -1,5 +1,6 @@
-import torch
 from typing import Dict
+
+import torch
 
 
 def get_torch_spex_dict_from_data_lists(
@@ -32,12 +33,12 @@ def get_torch_spex_dict_from_data_lists(
         torch.tensor([0] + [len(pos) for pos in positions[:-1]], device=device), dim=0
     )
 
-    positions = torch.cat(positions, dim=0)
-    cells = torch.stack(cells)
+    all_positions = torch.cat(positions, dim=0)
+    all_cells = torch.stack(cells)
 
     batch_dict = dict(
-        positions=positions,
-        cells=cells,
+        positions=all_positions,
+        cells=all_cells,
         species=species,
         cell_shifts=cell_shifts,
         centers=centers,

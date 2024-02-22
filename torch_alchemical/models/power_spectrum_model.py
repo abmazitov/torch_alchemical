@@ -1,14 +1,9 @@
+from typing import Union
+
 import numpy as np
 import torch
 
-from typing import Union
-
-from torch_alchemical.nn import (
-    LayerNorm,
-    Linear,
-    PowerSpectrumFeatures,
-    SiLU,
-)
+from torch_alchemical.nn import LayerNorm, Linear, PowerSpectrumFeatures, SiLU
 from torch_alchemical.utils import get_compositions_from_numbers
 
 

@@ -1,8 +1,8 @@
-import torch
 import metatensor
+import torch
 from metatensor.torch import Labels
-from torch_alchemical import nn
 
+from torch_alchemical import nn
 
 torch.set_default_dtype(torch.float64)
 torch.manual_seed(0)

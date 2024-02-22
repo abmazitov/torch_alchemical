@@ -1,11 +1,11 @@
 from typing import Union
+
 import numpy as np
 import torch
+from metatensor.torch import Labels, TensorBlock, TensorMap
 from torch_spex.spherical_expansions import SphericalExpansion
-from torch_alchemical.utils import (
-    get_torch_spex_dict,
-)
-from metatensor.torch import TensorBlock, TensorMap, Labels
+
+from torch_alchemical.utils import get_torch_spex_dict
 
 
 class PowerSpectrumFeatures(torch.nn.Module):
@@ -84,7 +84,10 @@ class PowerSpectrumFeatures(torch.nn.Module):
         n_max = vex_calculator.radial_basis_calculator.n_max_l
         l_max = len(n_max) - 1
         n_feat = sum(
-            [n_max[l] ** 2 * self.num_pseudo_species**2 for l in range(l_max + 1)]
+            [
+                n_max[l] ** 2 * self.num_pseudo_species**2
+                for l in range(l_max + 1)  # noqa E741
+            ]
         )
         return n_feat
 
@@ -102,7 +105,7 @@ class PowerSpectrum(torch.nn.Module):
         device = spex.block(0).values.device
         for a_i in self.all_species:
             ps_values_ai = []
-            for l in range(self.l_max + 1):
+            for l in range(self.l_max + 1):  # noqa E741
                 cg = (2 * l + 1) ** (-0.5)
                 block_ai_l = spex.block({"lam": l, "a_i": a_i})
                 c_ai_l = block_ai_l.values

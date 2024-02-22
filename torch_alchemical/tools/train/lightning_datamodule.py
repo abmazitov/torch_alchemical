@@ -1,11 +1,13 @@
+from typing import Optional
+
 import lightning.pytorch as pl
-from torch_alchemical.utils import get_list_of_unique_atomic_numbers
+import torch
+from ase.io import read
+from torch_geometric.loader import DataLoader
+
 from torch_alchemical.data import AtomisticDataset
 from torch_alchemical.transforms import NeighborList
-from ase.io import read
-from typing import Optional, Union
-import torch
-from torch_geometric.loader import DataLoader
+from torch_alchemical.utils import get_list_of_unique_atomic_numbers
 
 
 def train_test_split(dataset, lengths, shuffle=True):
@@ -32,13 +34,10 @@ class LitDataModule(pl.LightningDataModule):
         self,
         train_frames_path: str,
         val_frames_path: str,
+        target_properties: list[str],
         test_frames_path: Optional[str] = None,
         batch_size: Optional[int] = 16,
         neighborlist_cutoff_radius: Optional[float] = 5.0,
-        target_properties: Optional[Union[list[str], tuple[str]]] = (
-            "energies",
-            "forces",
-        ),
         shuffle: Optional[bool] = True,
         verbose: Optional[bool] = False,
     ):
