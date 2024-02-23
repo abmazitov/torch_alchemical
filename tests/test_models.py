@@ -14,7 +14,7 @@ torch.manual_seed(0)
 
 
 class TestModels:
-    device = "cpu"
+    device = "cuda" if torch.cuda.is_available() else "cpu
     frames = read("./tests/data/hea_bulk_test_sample.xyz", index=":")
     all_species = np.unique(np.hstack([frame.numbers for frame in frames])).tolist()
     with open("./tests/configs/default_hypers_alchemical.json", "r") as f:
@@ -26,14 +26,14 @@ class TestModels:
         frames, target_properties=["energies", "forces"], transforms=transforms
     )
     dataloader = DataLoader(dataset, batch_size=len(frames), shuffle=False)
-    batch = next(iter(dataloader))
+    batch = next(iter(dataloader)).to(device)
 
     def test_bpps_model(self):
         torch.manual_seed(0)
         model = BPPSModel(
             unique_numbers=self.all_species,
             **self.default_model_parameters,
-        )
+        ).to(self.device)
         with torch.no_grad():
             predictions = model(
                 positions=self.batch.pos,
@@ -51,7 +51,7 @@ class TestModels:
             unique_numbers=self.all_species,
             contract_center_species=True,
             **self.default_model_parameters,
-        )
+        ).to(self.device)
         with torch.no_grad():
             predictions = model(
                 positions=self.batch.pos,
@@ -69,7 +69,7 @@ class TestModels:
             unique_numbers=self.all_species,
             contract_center_species=False,
             **self.default_model_parameters,
-        )
+        ).to(self.device)
         with torch.no_grad():
             predictions = model(
                 positions=self.batch.pos,

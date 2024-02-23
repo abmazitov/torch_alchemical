@@ -15,7 +15,7 @@ torch.manual_seed(0)
 
 
 class TestAutograd:
-    device = "cpu"
+    device = "cuda" if torch.cuda.is_available() else "cpu"
     frames = read("./tests/data/hea_bulk_test_sample.xyz", index=":")
     all_species = np.unique(np.hstack([frame.numbers for frame in frames])).tolist()
     with open("./tests/configs/default_hypers_alchemical.json", "r") as f:
@@ -27,7 +27,7 @@ class TestAutograd:
         frames, target_properties=["energies", "forces"], transforms=transforms
     )
     dataloader = DataLoader(dataset, batch_size=len(frames), shuffle=False)
-    batch = next(iter(dataloader))
+    batch = next(iter(dataloader)).to(device)
 
     def test_autograd_forces(self):
         torch.manual_seed(0)
@@ -35,7 +35,7 @@ class TestAutograd:
             unique_numbers=self.all_species,
             contract_center_species=False,
             **self.default_model_parameters,
-        )
+        ).to(self.device)
         energies = model(
             positions=self.batch.pos,
             cells=self.batch.cell,
