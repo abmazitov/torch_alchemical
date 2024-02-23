@@ -1,4 +1,4 @@
-from typing import Union
+from typing import Optional, Union
 
 import numpy as np
 import torch
@@ -14,11 +14,11 @@ class PowerSpectrumFeatures(torch.nn.Module):
         all_species: Union[list, np.ndarray],
         cutoff_radius: float,
         basis_cutoff: float,
-        radial_basis_type: str = "le",
-        basis_normalization_factor: float = None,
-        basis_scale: float = 3.0,
-        trainable_basis: bool = True,
-        num_pseudo_species: int = None,
+        radial_basis_type: Optional[str] = "le",
+        basis_normalization_factor: Optional[float] = None,
+        basis_scale: Optional[float] = 3.0,
+        trainable_basis: Optional[bool] = True,
+        num_pseudo_species: Optional[int] = None,
     ):
         super().__init__()
         if isinstance(all_species, np.ndarray):
@@ -123,16 +123,16 @@ class PowerSpectrum(torch.nn.Module):
                     c_ai_l.shape[0], c_ai_l.shape[2] * c_ai_l.shape[2]
                 )
                 ps_values_ai.append(ps_ai_l)
-            ps_values_ai = torch.concatenate(ps_values_ai, dim=-1)
+            ps_values_ai_cat = torch.concatenate(ps_values_ai, dim=-1)
 
             block = TensorBlock(
-                values=ps_values_ai,
+                values=ps_values_ai_cat,
                 samples=spex.block({"lam": 0, "a_i": a_i}).samples,
                 components=[],
                 properties=Labels(
                     names=("property",),
                     values=torch.arange(
-                        ps_values_ai.shape[-1], device=ps_values_ai.device
+                        ps_values_ai_cat.shape[-1], device=ps_values_ai_cat.device
                     ).reshape(-1, 1),
                 ),
             )

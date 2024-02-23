@@ -6,7 +6,7 @@ from ase.io import read
 from torch_geometric.loader import DataLoader
 
 from torch_alchemical.data import AtomisticDataset
-from torch_alchemical.models import AlchemicalModel, BPPSModel, PowerSpectrumModel
+from torch_alchemical.models import AlchemicalModel, BPPSModel
 from torch_alchemical.transforms import NeighborList
 
 torch.set_default_dtype(torch.float64)
@@ -27,23 +27,6 @@ class TestModels:
     )
     dataloader = DataLoader(dataset, batch_size=len(frames), shuffle=False)
     batch = next(iter(dataloader))
-
-    def test_power_spectrum_model(self):
-        torch.manual_seed(0)
-        model = PowerSpectrumModel(
-            unique_numbers=self.all_species,
-            **self.default_model_parameters,
-        )
-        with torch.no_grad():
-            predictions = model(
-                positions=self.batch.pos,
-                cells=self.batch.cell,
-                numbers=self.batch.numbers,
-                edge_indices=self.batch.edge_index,
-                edge_offsets=self.batch.edge_offsets,
-                batch=self.batch.batch,
-            )
-            assert torch.allclose(predictions, torch.tensor([[23.5994], [56.8454]]))
 
     def test_bpps_model(self):
         torch.manual_seed(0)

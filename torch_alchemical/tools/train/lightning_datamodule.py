@@ -35,9 +35,9 @@ class LitDataModule(pl.LightningDataModule):
         train_frames_path: str,
         val_frames_path: str,
         target_properties: list[str],
+        neighborlist_cutoff_radius: float,
         test_frames_path: Optional[str] = None,
         batch_size: Optional[int] = 16,
-        neighborlist_cutoff_radius: Optional[float] = 5.0,
         shuffle: Optional[bool] = True,
         verbose: Optional[bool] = False,
     ):
@@ -87,7 +87,7 @@ class LitDataModule(pl.LightningDataModule):
                     verbose=self.verbose,
                 )
             else:
-                self.test_dataset = []
+                self.test_dataset = []  # type: ignore
 
     def train_dataloader(self):
         batch_size = self.batch_size

@@ -1,4 +1,4 @@
-from typing import Union
+from typing import Optional
 
 import numpy as np
 import torch
@@ -13,17 +13,16 @@ class BPPSModel(torch.nn.Module):
         self,
         hidden_sizes: list[int],
         output_size: int,
-        unique_numbers: Union[list, np.ndarray],
+        unique_numbers: list[int],
         cutoff: float,
         basis_cutoff_power_spectrum: float,
         radial_basis_type: str,
-        num_pseudo_species: int = None,
-        trainable_basis: bool = True,
-        normalize: bool = True,
-        basis_normalization_factor: float = None,
-        basis_scale: float = 3.0,
-        energies_scale_factor: float = 1.0,
-        average_number_of_atoms: float = 1.0,
+        trainable_basis: Optional[bool] = True,
+        normalize: Optional[bool] = True,
+        basis_normalization_factor: Optional[float] = None,
+        basis_scale: Optional[float] = 3.0,
+        energies_scale_factor: Optional[float] = 1.0,
+        average_number_of_atoms: Optional[float] = 1.0,
     ):
         super().__init__()
         if isinstance(unique_numbers, np.ndarray):
@@ -42,14 +41,13 @@ class BPPSModel(torch.nn.Module):
             basis_normalization_factor=basis_normalization_factor,
             basis_scale=basis_scale,
             trainable_basis=trainable_basis,
-            num_pseudo_species=num_pseudo_species,
         )
         ps_input_size = self.ps_features_layer.num_features
         self.normalize = normalize
         if self.normalize:
             self.layer_norm = LayerNorm(ps_input_size)
         layer_size = [ps_input_size] + hidden_sizes
-        layers = []
+        layers: list[torch.nn.Module] = []
         linear_layer_keys = Labels(
             names=["a_i"], values=torch.tensor(self.unique_numbers).view(-1, 1)
         )

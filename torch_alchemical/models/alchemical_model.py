@@ -1,4 +1,4 @@
-from typing import Optional, Union
+from typing import Optional
 
 import metatensor.torch
 import numpy as np
@@ -20,11 +20,11 @@ class AlchemicalModel(torch.nn.Module):
         self,
         hidden_sizes: list[int],
         output_size: int,
-        unique_numbers: Union[list, np.ndarray],
+        num_pseudo_species: int,
+        unique_numbers: list[int],
         cutoff: float,
         basis_cutoff_power_spectrum: float,
         radial_basis_type: str,
-        num_pseudo_species: Optional[int] = None,
         contract_center_species: Optional[bool] = False,
         trainable_basis: Optional[bool] = True,
         normalize: Optional[bool] = True,
@@ -73,14 +73,15 @@ class AlchemicalModel(torch.nn.Module):
                 values=torch.arange(self.num_pseudo_species, device=device).view(-1, 1),
             )
         else:
-            self.embedding = None
+            self.embedding = None  # type: ignore
             linear_layer_keys = Labels(
                 names=["a_i"],
                 values=torch.tensor(self.unique_numbers, device=device).view(-1, 1),
             )
 
         layer_size = [ps_input_size] + hidden_sizes
-        layers = []
+
+        layers: list[torch.nn.Module] = []
 
         for layer_index in range(1, len(layer_size)):
             layers.append(

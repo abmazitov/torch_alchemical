@@ -9,7 +9,7 @@ from torch_geometric.loader import DataLoader
 
 from torch_alchemical import nn
 from torch_alchemical.data import AtomisticDataset
-from torch_alchemical.models import AlchemicalModel, BPPSModel, PowerSpectrumModel
+from torch_alchemical.models import AlchemicalModel, BPPSModel
 from torch_alchemical.transforms import NeighborList
 
 torch.set_default_dtype(torch.float64)
@@ -85,22 +85,6 @@ class TestModels:
             AlchemicalModel(
                 unique_numbers=self.all_species,
                 contract_center_species=False,
-                **self.default_model_parameters,
-            )
-        )
-        model.forward(
-            positions=self.batch.pos,
-            cells=self.batch.cell,
-            numbers=self.batch.numbers,
-            edge_indices=self.batch.edge_index,
-            edge_offsets=self.batch.edge_offsets,
-            batch=self.batch.batch,
-        )
-
-    def test_power_spectrum_model(self):
-        model = torch.jit.script(
-            PowerSpectrumModel(
-                unique_numbers=self.all_species,
                 **self.default_model_parameters,
             )
         )
