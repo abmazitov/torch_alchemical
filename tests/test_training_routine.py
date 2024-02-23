@@ -34,7 +34,9 @@ class TestTrainingRoutine:
         datamodule.setup()
 
         model = AlchemicalModel(
-            unique_numbers=datamodule.unique_numbers, **self.default_model_parameters
+            unique_numbers=datamodule.unique_numbers,
+            num_pseudo_species=4,
+            **self.default_model_parameters
         )
         litmodel = LitModel(model=model, **self.litmodel_parameters)
         initialize_composition_layer_weights(litmodel.model, datamodule)
@@ -48,6 +50,6 @@ class TestTrainingRoutine:
             enable_checkpointing=False,
             enable_progress_bar=False,
             logger=False,
-            accelerator="cpu",
+            accelerator="gpu" if torch.cuda.is_available() else "cpu",
         )
         trainer.fit(litmodel, datamodule)

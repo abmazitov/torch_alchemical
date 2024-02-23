@@ -85,6 +85,7 @@ class TestModels:
             AlchemicalModel(
                 unique_numbers=self.all_species,
                 contract_center_species=False,
+                num_pseudo_species=4,
                 **self.default_model_parameters,
             )
         )

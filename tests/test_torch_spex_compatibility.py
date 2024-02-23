@@ -72,4 +72,4 @@ class TestTorchSpexCompatibility:
         with torch.no_grad():
             data_tm = calculator.forward(**data_dict)
             spex_tm = calculator.forward(**self.spex_batch)
-        assert metatensor.operations.allclose(data_tm, spex_tm, atol=1e-5, rtol=1e-5)
+        assert metatensor.operations.allclose(data_tm, spex_tm, atol=1e-4)

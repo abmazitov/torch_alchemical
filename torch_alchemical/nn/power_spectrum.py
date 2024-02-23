@@ -83,12 +83,20 @@ class PowerSpectrumFeatures(torch.nn.Module):
         vex_calculator = self.spex_calculator.vector_expansion_calculator
         n_max = vex_calculator.radial_basis_calculator.n_max_l
         l_max = len(n_max) - 1
-        n_feat = sum(
-            [
-                n_max[l] ** 2 * self.num_pseudo_species**2
-                for l in range(l_max + 1)  # noqa E741
-            ]
-        )
+        if self.num_pseudo_species is None:
+            n_feat = sum(
+                [
+                    n_max[l] ** 2 * len(self.all_species) ** 2
+                    for l in range(l_max + 1)  # noqa E741
+                ]
+            )
+        else:
+            n_feat = sum(
+                [
+                    n_max[l] ** 2 * self.num_pseudo_species**2
+                    for l in range(l_max + 1)  # noqa E741
+                ]
+            )
         return n_feat
 
 

@@ -34,7 +34,9 @@ class TestTools:
         datamodule.setup()
 
         model = AlchemicalModel(
-            unique_numbers=datamodule.unique_numbers, **self.default_model_parameters
+            unique_numbers=datamodule.unique_numbers,
+            num_pseudo_species=4,
+            **self.default_model_parameters
         )
         initialize_composition_layer_weights(model, datamodule)
         initialize_combining_matrix(model, datamodule)

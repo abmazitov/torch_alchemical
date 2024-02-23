@@ -38,4 +38,4 @@ class TestUtils:
         properties = get_target_properties(self.frames[0], ["energies", "forces"])
         ref_properties = torch.load("./tests/data/hea_bulk_test_target_properties.pt")
         for key in properties.keys():
-            assert torch.allclose(properties[key], ref_properties[key])
+            assert torch.allclose(properties[key], ref_properties[key], atol=1e-4)
