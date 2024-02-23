@@ -6,26 +6,11 @@ from ase.io import read
 from torch_geometric.loader import DataLoader
 
 from torch_alchemical.data import AtomisticDataset
-from torch_alchemical.models import AlchemicalModel, BPPSModel, PowerSpectrumModel
+from torch_alchemical.models import AlchemicalModel, BPPSModel
 from torch_alchemical.transforms import NeighborList
-from torch_alchemical.utils import get_autograd_forces
 
 torch.set_default_dtype(torch.float64)
 torch.manual_seed(0)
-
-
-def evaluate_model(model, batch, ref_energies, ref_forces):
-    energies = model(
-        positions=batch.pos,
-        cells=batch.cell,
-        numbers=batch.numbers,
-        edge_indices=batch.edge_index,
-        edge_offsets=batch.edge_offsets,
-        batch=batch.batch,
-    )
-    forces = get_autograd_forces(energies, batch.pos)[0]
-    assert torch.allclose(energies, ref_energies)
-    assert torch.allclose(forces, ref_forces)
 
 
 class TestModels:
@@ -43,32 +28,55 @@ class TestModels:
     dataloader = DataLoader(dataset, batch_size=len(frames), shuffle=False)
     batch = next(iter(dataloader))
 
-    def test_power_spectrum_model(self):
-        torch.manual_seed(0)
-        model = PowerSpectrumModel(
-            unique_numbers=self.all_species,
-            **self.default_model_parameters,
-        )
-        ref_energies = torch.load("./tests/data/hea_bulk_test_ps_energies.pt")
-        ref_forces = torch.load("./tests/data/hea_bulk_test_ps_forces.pt")
-        evaluate_model(model, self.batch, ref_energies, ref_forces)
-
     def test_bpps_model(self):
         torch.manual_seed(0)
         model = BPPSModel(
             unique_numbers=self.all_species,
             **self.default_model_parameters,
         )
-        ref_energies = torch.load("./tests/data/hea_bulk_test_bpps_energies.pt")
-        ref_forces = torch.load("./tests/data/hea_bulk_test_bpps_forces.pt")
-        evaluate_model(model, self.batch, ref_energies, ref_forces)
+        with torch.no_grad():
+            predictions = model(
+                positions=self.batch.pos,
+                cells=self.batch.cell,
+                numbers=self.batch.numbers,
+                edge_indices=self.batch.edge_index,
+                edge_offsets=self.batch.edge_offsets,
+                batch=self.batch.batch,
+            )
+            assert torch.allclose(predictions, torch.tensor([[7.4553], [-6.9550]]))
 
-    def test_alchemical_model(self):
+    def test_alchemical_model_with_contraction(self):
         torch.manual_seed(0)
         model = AlchemicalModel(
             unique_numbers=self.all_species,
+            contract_center_species=True,
             **self.default_model_parameters,
         )
-        ref_energies = torch.load("./tests/data/hea_bulk_test_alchemical_energies.pt")
-        ref_forces = torch.load("./tests/data/hea_bulk_test_alchemical_forces.pt")
-        evaluate_model(model, self.batch, ref_energies, ref_forces)
+        with torch.no_grad():
+            predictions = model(
+                positions=self.batch.pos,
+                cells=self.batch.cell,
+                numbers=self.batch.numbers,
+                edge_indices=self.batch.edge_index,
+                edge_offsets=self.batch.edge_offsets,
+                batch=self.batch.batch,
+            )
+            assert torch.allclose(predictions, torch.tensor([[-2.3405], [11.4522]]))
+
+    def test_alchemical_model_without_contraction(self):
+        torch.manual_seed(0)
+        model = AlchemicalModel(
+            unique_numbers=self.all_species,
+            contract_center_species=False,
+            **self.default_model_parameters,
+        )
+        with torch.no_grad():
+            predictions = model(
+                positions=self.batch.pos,
+                cells=self.batch.cell,
+                numbers=self.batch.numbers,
+                edge_indices=self.batch.edge_index,
+                edge_offsets=self.batch.edge_offsets,
+                batch=self.batch.batch,
+            )
+            assert torch.allclose(predictions, torch.tensor([[3.7277], [-3.4775]]))

@@ -1,4 +1,4 @@
-from typing import Union
+from typing import Optional
 
 import metatensor.torch
 import numpy as np
@@ -20,17 +20,18 @@ class AlchemicalModel(torch.nn.Module):
         self,
         hidden_sizes: list[int],
         output_size: int,
-        unique_numbers: Union[list, np.ndarray],
+        num_pseudo_species: int,
+        unique_numbers: list[int],
         cutoff: float,
         basis_cutoff_power_spectrum: float,
         radial_basis_type: str,
-        num_pseudo_species: int = None,
-        trainable_basis: bool = True,
-        normalize: bool = True,
-        basis_normalization_factor: float = None,
-        basis_scale: float = 3.0,
-        energies_scale_factor: float = 1.0,
-        average_number_of_atoms: float = 1.0,
+        contract_center_species: Optional[bool] = False,
+        trainable_basis: Optional[bool] = True,
+        normalize: Optional[bool] = True,
+        basis_normalization_factor: Optional[float] = None,
+        basis_scale: Optional[float] = 3.0,
+        energies_scale_factor: Optional[float] = 1.0,
+        average_number_of_atoms: Optional[float] = 1.0,
     ):
         super().__init__()
         if isinstance(unique_numbers, np.ndarray):
@@ -40,6 +41,7 @@ class AlchemicalModel(torch.nn.Module):
         self.num_pseudo_species = num_pseudo_species
         self.average_number_of_atoms = average_number_of_atoms
         self.energies_scale_factor = energies_scale_factor
+        self.contract_center_species = contract_center_species
         self.composition_layer = torch.nn.Linear(
             len(unique_numbers), output_size, bias=False
         )
@@ -60,22 +62,27 @@ class AlchemicalModel(torch.nn.Module):
             self.ps_features_layer.spex_calculator.vector_expansion_calculator
         )
         contraction_layer = vex_calculator.radial_basis_calculator.combination_matrix
-        self.embedding = AlchemicalEmbedding(
-            unique_numbers=unique_numbers,
-            contraction_layer=contraction_layer,
-        )
+        device = contraction_layer.linear_layer.weight.device
+        if self.contract_center_species:
+            self.embedding = AlchemicalEmbedding(
+                unique_numbers=unique_numbers,
+                contraction_layer=contraction_layer,
+            )
+            linear_layer_keys = Labels(
+                names=["b_i"],
+                values=torch.arange(self.num_pseudo_species, device=device).view(-1, 1),
+            )
+        else:
+            self.embedding = None  # type: ignore
+            linear_layer_keys = Labels(
+                names=["a_i"],
+                values=torch.tensor(self.unique_numbers, device=device).view(-1, 1),
+            )
+
         layer_size = [ps_input_size] + hidden_sizes
-        layers = []
-        linear_layer_keys = Labels(
-            names=["a_i", "pseudo_species"],
-            values=torch.stack(
-                [
-                    torch.tensor([a_i, b_i])
-                    for b_i in range(self.num_pseudo_species)
-                    for a_i in self.unique_numbers
-                ]
-            ),
-        )
+
+        layers: list[torch.nn.Module] = []
+
         for layer_index in range(1, len(layer_size)):
             layers.append(
                 LinearMap(
@@ -110,11 +117,18 @@ class AlchemicalModel(torch.nn.Module):
         )
         if self.normalize:
             ps = self.layer_norm(ps)
-        ps = self.embedding(ps)
+        if self.embedding is not None:
+            ps = self.embedding(ps)
+            ps = ps.keys_to_samples("a_i")
+            ps = metatensor.torch.sum_over_samples(ps, "a_i")
+        else:
+            pass
         for layer in self.nn:
             ps = layer(ps)
         ps = ps.keys_to_samples(ps.keys.names)
-        ps = metatensor.torch.sum_over_samples(ps, ["center", "a_i", "pseudo_species"])
+        samples_names = ps.block().samples.names
+        samples_names.remove("structure")
+        ps = metatensor.torch.sum_over_samples(ps, samples_names)
         energies = ps.block().values
         if self.normalize:
             energies = energies / torch.sqrt(torch.tensor(self.num_pseudo_species))

@@ -1,10 +1,10 @@
-from typing import Optional
+from typing import Optional, Union
 
 import torch
 
 
 class WeightedMSELoss(torch.nn.Module):
-    def __init__(self, energies_weight: float, forces_weight: float = None):
+    def __init__(self, energies_weight: float, forces_weight: Optional[float] = None):
         super().__init__()
         self.energies_weight = energies_weight
         self.forces_weight = forces_weight
@@ -16,7 +16,7 @@ class WeightedMSELoss(torch.nn.Module):
         predicted_forces: Optional[torch.Tensor] = None,
         target_forces: Optional[torch.Tensor] = None,
     ):
-        loss = 0
+        loss: Union[int, torch.Tensor] = 0
         weights = []
         predicted_tensors = []
         target_tensors = []
@@ -47,7 +47,7 @@ class MSELoss(torch.nn.Module):
         predicted_forces: Optional[torch.Tensor] = None,
         target_forces: Optional[torch.Tensor] = None,
     ):
-        loss = 0
+        loss: Union[int, torch.Tensor] = 0
         predicted_tensors = []
         target_tensors = []
         if predicted_energies is not None and target_energies is not None:

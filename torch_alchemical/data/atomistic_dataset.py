@@ -21,7 +21,7 @@ class AtomisticDataset(torch.utils.data.Dataset):
     ):
         super().__init__()
         assert set(target_properties).issubset(AVAILABLE_TARGET_PROPERTIES)
-        self.dataset = []
+        self.dataset: list[Data] = []
         self.target_properties = target_properties
         self.frames = frames
         self.transforms = transforms
