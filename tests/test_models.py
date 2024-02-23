@@ -14,7 +14,7 @@ torch.manual_seed(0)
 
 
 class TestModels:
-    device = "cuda" if torch.cuda.is_available() else "cpu
+    device = "cuda" if torch.cuda.is_available() else "cpu"
     frames = read("./tests/data/hea_bulk_test_sample.xyz", index=":")
     all_species = np.unique(np.hstack([frame.numbers for frame in frames])).tolist()
     with open("./tests/configs/default_hypers_alchemical.json", "r") as f:
