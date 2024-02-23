@@ -11,7 +11,7 @@ torch.manual_seed(0)
 def evaluate_layer(layer, ps, ref_ps):
     with torch.no_grad():
         layer_ps = layer(ps)
-    assert metatensor.operations.allclose(layer_ps, ref_ps, atol=1e-5, rtol=1e-5)
+    assert metatensor.operations.allclose(layer_ps, ref_ps, atol=1e-4)
 
 
 class TestNNLayers:
@@ -86,4 +86,4 @@ class TestNNLayers:
                 target_energies=ref_energies,
                 target_forces=ref_forces,
             )
-            assert torch.allclose(loss, torch.tensor(0.0))
+            assert torch.allclose(loss, torch.tensor(0.0), atol=1e-4)

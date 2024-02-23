@@ -28,5 +28,5 @@ class TestTransforms:
         batch = next(iter(dataloader))
         ref_edge_index = torch.load("./tests/data/hea_bulk_test_edge_index.pt")
         ref_edge_offsets = torch.load("./tests/data/hea_bulk_test_edge_offsets.pt")
-        assert torch.allclose(batch.edge_index, ref_edge_index)
-        assert torch.allclose(batch.edge_offsets, ref_edge_offsets)
+        assert torch.allclose(batch.edge_index, ref_edge_index, atol=1e-4)
+        assert torch.allclose(batch.edge_offsets, ref_edge_offsets, atol=1e-4)

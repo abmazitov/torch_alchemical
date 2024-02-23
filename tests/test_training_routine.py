@@ -34,7 +34,9 @@ class TestTrainingRoutine:
         datamodule.setup()
 
         model = AlchemicalModel(
-            unique_numbers=datamodule.unique_numbers, **self.default_model_parameters
+            unique_numbers=datamodule.unique_numbers,
+            num_pseudo_species=4,
+            **self.default_model_parameters
         )
         litmodel = LitModel(model=model, **self.litmodel_parameters)
         initialize_composition_layer_weights(litmodel.model, datamodule)

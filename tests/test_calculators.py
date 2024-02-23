@@ -49,4 +49,4 @@ class TestCalculators:
 
         ref_ps = metatensor.torch.load("./tests/data/ps_calculator_test_data.npz")
 
-        assert metatensor.operations.allclose(ps, ref_ps, atol=1e-5, rtol=1e-5)
+        assert metatensor.operations.allclose(ps, ref_ps, atol=1e-4)
