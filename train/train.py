@@ -1,12 +1,11 @@
 from torch_alchemical.models import AlchemicalModel
 from torch_alchemical.tools.train import LitDataModule, LitModel
 from torch_alchemical.tools.train.initialize import (
-    initialize_combining_matrix,
     initialize_composition_layer_weights,
-    initialize_energies_scale_factor,
+    initialize_energies_forces_scale_factor,
 )
 import torch
-import ruamel.yaml as yaml
+from ruamel.yaml import YAML
 import argparse
 import lightning.pytorch as pl
 import os
@@ -22,7 +21,8 @@ if __name__ == "__main__":
     parser.add_argument("parameters", type=str)
     args = parser.parse_args()
     with open(args.parameters, "r") as f:
-        parameters = yaml.safe_load(f)
+        yaml = YAML(typ="safe", pure=True)
+        parameters = yaml.load(f)
 
     datamodule = LitDataModule(**parameters["datamodule"])
     datamodule.prepare_data()
@@ -42,8 +42,7 @@ if __name__ == "__main__":
     )
 
     initialize_composition_layer_weights(model, datamodule, trainable=False)
-    initialize_energies_scale_factor(model, datamodule, trainable=False)
-    initialize_combining_matrix(model, datamodule, trainable=True)
+    initialize_energies_forces_scale_factor(model, datamodule, trainable=False)
     model = torch.jit.script(model)
     restart = parameters["litmodel"].pop("restart")
     if restart:
