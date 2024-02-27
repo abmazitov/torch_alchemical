@@ -1,8 +1,9 @@
-from torch_alchemical.models import AlchemicalModel
+from torch_alchemical.models import AlchemicalModel, BPPSModel
 from torch_alchemical.tools.train import LitDataModule, LitModel
 from torch_alchemical.tools.train.initialize import (
     initialize_composition_layer_weights,
     initialize_energies_forces_scale_factor,
+    rescale_energies_and_forces,
 )
 import torch
 from ruamel.yaml import YAML
@@ -14,6 +15,7 @@ from datetime import datetime
 
 
 torch.set_default_dtype(torch.float64)
+SUPPORTED_ARCHITECTURES = ["alchemical_model", "soap-bpnn"]
 
 
 if __name__ == "__main__":
@@ -34,15 +36,27 @@ if __name__ == "__main__":
             for data in datamodule.train_dataset
         ]
     )
-
-    model = AlchemicalModel(
-        unique_numbers=datamodule.unique_numbers,
-        basis_normalization_factor=basis_normalization_factor,
-        **parameters["model"],
-    )
+    architecture = parameters.pop("architecture")
+    if architecture not in SUPPORTED_ARCHITECTURES:
+        raise ValueError(
+            f"Architecture {architecture} is not supported. Supported architectures are {SUPPORTED_ARCHITECTURES}"
+        )
+    if architecture == "soap-bpnn":
+        model = BPPSModel(
+            unique_numbers=datamodule.unique_numbers,
+            basis_normalization_factor=basis_normalization_factor,
+            **parameters["model"],
+        )
+    else:
+        model = AlchemicalModel(
+            unique_numbers=datamodule.unique_numbers,
+            basis_normalization_factor=basis_normalization_factor,
+            **parameters["model"],
+        )
 
     initialize_composition_layer_weights(model, datamodule, trainable=False)
     initialize_energies_forces_scale_factor(model, datamodule, trainable=False)
+    rescale_energies_and_forces(model, datamodule)
     model = torch.jit.script(model)
     restart = parameters["litmodel"].pop("restart")
     if restart:

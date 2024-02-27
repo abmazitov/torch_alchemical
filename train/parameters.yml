@@ -1,8 +1,9 @@
 neighborlist_cutoff: &neighborlist_cutoff 5.0
+achitecture: "alchemical_model"
 
 datamodule:
-  train_frames_path: "../data/test.xyz"
-  val_frames_path: "../data/test.xyz"
+  train_frames_path: "path/to/train_frames.xyz"
+  val_frames_path: "path/to/val_frames.xyz"
   batch_size: 16
   neighborlist_cutoff_radius: *neighborlist_cutoff
   target_properties: ["energies", "forces"]
@@ -29,7 +30,7 @@ trainer:
   max_epochs: 1000
   accelerator: "gpu"
   early_stopping_callback:
-    monitor: "loss"
+    monitor: "val_energies_mae"
     patience: 50
     mode: "min"
   checkpoint_callback:
