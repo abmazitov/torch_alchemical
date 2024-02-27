@@ -69,7 +69,13 @@ def initialize_energies_forces_scale_factor(
     print(f"Energies scale is initialized with shifted energies {scale_description}")
 
 
-def rescale_energies_and_forces(model, datamodule, scale_factor):
+def rescale_energies_and_forces(model, datamodule):
+    if not hasattr(model, "energies_scale_factor"):
+        raise AttributeError(
+            "Model does not have energies_scale_factor attribute, call "
+            + "initialize_energies_forces_scale_factor() first"
+        )
+    scale_factor = model.energies_scale_factor
     dataset = datamodule.train_dataset
     composition_layer = model.composition_layer
     numbers = torch.cat([data.numbers for data in dataset])
