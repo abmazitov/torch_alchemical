@@ -1,5 +1,5 @@
 neighborlist_cutoff: &neighborlist_cutoff 5.0
-achitecture: "alchemical_model"
+architecture: "alchemical_model"
 
 datamodule:
   train_frames_path: "path/to/train_frames.xyz"
