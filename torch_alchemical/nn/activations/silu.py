@@ -1,3 +1,5 @@
+from typing import List
+
 import torch
 from metatensor.torch import TensorBlock, TensorMap
 
@@ -10,7 +12,7 @@ class SiLU(torch.nn.Module):
         self.scaling = 1.676532470331856
 
     def forward(self, tensormap: TensorMap) -> TensorMap:
-        output_blocks: list[TensorBlock] = []
+        output_blocks: List[TensorBlock] = []
         for block in tensormap.blocks():
             new_block = TensorBlock(
                 values=self.silu(block.values) * self.scaling,

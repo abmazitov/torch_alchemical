@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import List, Optional
 
 import numpy as np
 import torch
@@ -11,9 +11,9 @@ from torch_alchemical.utils import get_compositions_from_numbers
 class BPPSModel(torch.nn.Module):
     def __init__(
         self,
-        hidden_sizes: list[int],
+        hidden_sizes: List[int],
         output_size: int,
-        unique_numbers: list[int],
+        unique_numbers: List[int],
         cutoff: float,
         basis_cutoff_power_spectrum: float,
         radial_basis_type: str,
@@ -47,7 +47,7 @@ class BPPSModel(torch.nn.Module):
         if self.normalize:
             self.layer_norm = LayerNorm(ps_input_size)
         layer_size = [ps_input_size] + hidden_sizes
-        layers: list[torch.nn.Module] = []
+        layers: List[torch.nn.Module] = []
         linear_layer_keys = Labels(
             names=["a_i"], values=torch.tensor(self.unique_numbers).view(-1, 1)
         )

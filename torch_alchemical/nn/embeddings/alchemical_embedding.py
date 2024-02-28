@@ -1,3 +1,5 @@
+from typing import List
+
 import torch
 from metatensor.torch import Labels, TensorBlock, TensorMap
 
@@ -5,7 +7,7 @@ from metatensor.torch import Labels, TensorBlock, TensorMap
 class AlchemicalEmbedding(torch.nn.Module):
     def __init__(
         self,
-        unique_numbers: list[int],
+        unique_numbers: List[int],
         contraction_layer: torch.nn.Module,
     ):
         super().__init__()
@@ -13,8 +15,8 @@ class AlchemicalEmbedding(torch.nn.Module):
         self.contraction_layer = contraction_layer
 
     def forward(self, tensormap: TensorMap) -> TensorMap:
-        output_blocks: list[TensorBlock] = []
-        output_key_values: list[torch.Tensor] = []
+        output_blocks: List[TensorBlock] = []
+        output_key_values: List[torch.Tensor] = []
         for i, (key, block) in enumerate(tensormap.items()):
             assert not block.components
             one_hot_ai = torch.zeros(

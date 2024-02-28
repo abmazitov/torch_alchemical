@@ -1,4 +1,4 @@
-from typing import Optional, Union
+from typing import List, Optional, Union
 
 import numpy as np
 import torch
@@ -108,8 +108,8 @@ class PowerSpectrum(torch.nn.Module):
         self.all_species = all_species
 
     def forward(self, spex: TensorMap):
-        keys: list[list[int]] = []
-        blocks: list[TensorBlock] = []
+        keys: List[List[int]] = []
+        blocks: List[TensorBlock] = []
         device = spex.block(0).values.device
         for a_i in self.all_species:
             ps_values_ai = []
