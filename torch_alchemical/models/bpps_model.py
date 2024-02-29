@@ -1,6 +1,5 @@
 from typing import List, Optional
 
-import numpy as np
 import torch
 from metatensor.torch import Labels
 
@@ -70,7 +69,7 @@ class BPPSModel(torch.nn.Module):
         self,
         composition_weights: torch.Tensor,
     ):
-        if composition_weights.shape != self.composition_weights.shape:
+        if composition_weights.shape != self.composition_weights.shape:  # type: ignore
             raise ValueError(
                 "The shape of the composition weights does not match "
                 + f"the expected shape {composition_weights.shape}."

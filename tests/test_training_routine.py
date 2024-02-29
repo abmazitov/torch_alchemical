@@ -5,7 +5,6 @@ import lightning.pytorch as pl
 import torch
 
 from torch_alchemical.models import AlchemicalModel
-from torch_alchemical.utils import get_compositions_from_numbers
 from torch_alchemical.tools.train import LitDataModule, LitModel
 from torch_alchemical.tools.train.initialize import (
     get_average_number_of_atoms,
@@ -13,6 +12,7 @@ from torch_alchemical.tools.train.initialize import (
     get_energies_scale_factor,
     rescale_energies_and_forces,
 )
+from torch_alchemical.utils import get_compositions_from_numbers
 
 warnings.filterwarnings("ignore")
 

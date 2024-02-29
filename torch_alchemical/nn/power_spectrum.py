@@ -1,4 +1,5 @@
 from typing import List, Optional
+
 import torch
 from metatensor.torch import Labels, TensorBlock, TensorMap
 from torch_spex.spherical_expansions import SphericalExpansion

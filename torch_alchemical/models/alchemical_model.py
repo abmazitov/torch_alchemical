@@ -102,7 +102,7 @@ class AlchemicalModel(torch.nn.Module):
         self,
         composition_weights: torch.Tensor,
     ):
-        if composition_weights.shape != self.composition_weights.shape:
+        if composition_weights.shape != self.composition_weights.shape:  # type: ignore
             raise ValueError(
                 "The shape of the composition weights does not match "
                 + f"the expected shape {composition_weights.shape}."
