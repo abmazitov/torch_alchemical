@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import List, Optional
 
 import torch
 from ase import Atoms
@@ -14,14 +14,14 @@ AVAILABLE_TARGET_PROPERTIES = ["energies", "forces"]
 class AtomisticDataset(torch.utils.data.Dataset):
     def __init__(
         self,
-        frames: list[Atoms],
-        target_properties: list[str],
-        transforms: Optional[list[BaseTransform]] = None,
+        frames: List[Atoms],
+        target_properties: List[str],
+        transforms: Optional[List[BaseTransform]] = None,
         verbose: Optional[bool] = False,
     ):
         super().__init__()
         assert set(target_properties).issubset(AVAILABLE_TARGET_PROPERTIES)
-        self.dataset: list[Data] = []
+        self.dataset: List[Data] = []
         self.target_properties = target_properties
         self.frames = frames
         self.transforms = transforms

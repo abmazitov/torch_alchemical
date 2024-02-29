@@ -1,3 +1,5 @@
+from typing import List
+
 import torch
 from ase import Atoms
 
@@ -23,14 +25,14 @@ def get_property(frame: Atoms, property_name: str):
     return torch.tensor(prop, dtype=torch.get_default_dtype())
 
 
-def get_target_properties(frame: Atoms, properties: list[str]):
+def get_target_properties(frame: Atoms, properties: List[str]):
     """Get target properties from Atoms object.
 
     Parameters
     ----------
     frame : ase.Atoms
         ASE Atoms object.
-    properties : list[str]
+    properties : List[str]
         List of properties to extract from frames.
 
     Returns

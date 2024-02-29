@@ -4,23 +4,20 @@ import metatensor
 import numpy as np
 import torch
 from ase.io import read
+from metatensor.torch import Labels, TensorBlock, TensorMap
 from torch.utils.data import DataLoader as SpexDataLoader
 from torch_geometric.loader import DataLoader
+from torch_spex.forces import compute_forces
+from torch_spex.normalize import normalize_true as normalize_func
 from torch_spex.spherical_expansions import SphericalExpansion
 from torch_spex.structures import InMemoryDataset, TransformerNeighborList, collate_nl
 
 from torch_alchemical.data import AtomisticDataset
+from torch_alchemical.models import AlchemicalModel
+from torch_alchemical.nn import LayerNorm
+from torch_alchemical.nn.power_spectrum import PowerSpectrum
 from torch_alchemical.transforms import NeighborList
 from torch_alchemical.utils import get_torch_spex_dict
-from torch_alchemical.models import AlchemicalModel
-
-from torch_alchemical.nn import LayerNorm
-
-
-from torch_alchemical.nn.power_spectrum import PowerSpectrum
-from torch_spex.normalize import normalize_true as normalize_func
-from torch_spex.forces import compute_forces
-from metatensor.torch import TensorBlock, TensorMap, Labels
 
 torch.set_default_dtype(torch.float64)
 torch.manual_seed(0)

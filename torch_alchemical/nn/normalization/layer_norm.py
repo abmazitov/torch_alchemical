@@ -1,3 +1,5 @@
+from typing import List
+
 import torch
 from metatensor.torch import TensorBlock, TensorMap
 
@@ -8,7 +10,7 @@ class LayerNorm(torch.nn.Module):
         self.layernorm = torch.nn.LayerNorm(*args, **kwargs)
 
     def forward(self, tensormap: TensorMap) -> TensorMap:
-        output_blocks: list[TensorBlock] = []
+        output_blocks: List[TensorBlock] = []
         for block in tensormap.blocks():
             new_block = TensorBlock(
                 values=self.layernorm(block.values),

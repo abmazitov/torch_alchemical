@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import List, Optional
 
 import metatensor.torch
 import numpy as np
@@ -18,10 +18,10 @@ from torch_alchemical.utils import get_compositions_from_numbers
 class AlchemicalModel(torch.nn.Module):
     def __init__(
         self,
-        hidden_sizes: list[int],
+        hidden_sizes: List[int],
         output_size: int,
         num_pseudo_species: int,
-        unique_numbers: list[int],
+        unique_numbers: List[int],
         cutoff: float,
         basis_cutoff_power_spectrum: float,
         radial_basis_type: str,
@@ -81,7 +81,7 @@ class AlchemicalModel(torch.nn.Module):
 
         layer_size = [ps_input_size] + hidden_sizes
 
-        layers: list[torch.nn.Module] = []
+        layers: List[torch.nn.Module] = []
 
         for layer_index in range(1, len(layer_size)):
             layers.append(

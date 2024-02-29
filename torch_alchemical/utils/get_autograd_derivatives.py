@@ -1,7 +1,9 @@
+from typing import List
+
 import torch
 
 
-def get_autograd_forces(energies: torch.Tensor, positions: list[torch.Tensor]):
+def get_autograd_forces(energies: torch.Tensor, positions: List[torch.Tensor]):
     gradients = torch.autograd.grad(
         energies,
         positions,

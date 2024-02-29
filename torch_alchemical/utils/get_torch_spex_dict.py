@@ -1,14 +1,14 @@
-from typing import Dict
+from typing import Dict, List
 
 import torch
 
 
 def get_torch_spex_dict_from_data_lists(
-    positions: list[torch.Tensor],
-    cells: list[torch.Tensor],
-    numbers: list[torch.Tensor],
-    edge_indices: list[torch.Tensor],
-    edge_shifts: list[torch.Tensor],
+    positions: List[torch.Tensor],
+    cells: List[torch.Tensor],
+    numbers: List[torch.Tensor],
+    edge_indices: List[torch.Tensor],
+    edge_shifts: List[torch.Tensor],
 ) -> Dict[str, torch.Tensor]:
     device = positions[0].device
     for tensor in positions + cells + numbers + edge_indices + edge_shifts:

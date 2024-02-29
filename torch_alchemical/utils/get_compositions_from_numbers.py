@@ -1,15 +1,15 @@
-from typing import Optional
+from typing import List, Optional
 
 import torch
 
 
 def get_compositions_from_numbers(
     numbers: torch.Tensor,
-    unique_numbers: list[int],
+    unique_numbers: List[int],
     batch: torch.Tensor,
     dtype: Optional[torch.dtype] = None,
-) -> list[torch.Tensor]:
-    compositions: list[torch.Tensor] = []
+) -> List[torch.Tensor]:
+    compositions: List[torch.Tensor] = []
     device = numbers.device
     _, counts = torch.unique(batch, return_counts=True)
     dtype = dtype if dtype is not None else torch.float64

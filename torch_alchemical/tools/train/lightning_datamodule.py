@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import List, Optional
 
 import lightning.pytorch as pl
 import torch
@@ -34,7 +34,7 @@ class LitDataModule(pl.LightningDataModule):
         self,
         train_frames_path: str,
         val_frames_path: str,
-        target_properties: list[str],
+        target_properties: List[str],
         neighborlist_cutoff_radius: float,
         test_frames_path: Optional[str] = None,
         batch_size: Optional[int] = 16,

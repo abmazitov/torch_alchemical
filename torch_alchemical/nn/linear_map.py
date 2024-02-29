@@ -1,3 +1,5 @@
+from typing import List
+
 import torch
 from metatensor.torch import Labels, TensorBlock, TensorMap
 
@@ -15,7 +17,7 @@ class LinearMap(torch.nn.Module):
             self.linear[str(i)] = layer
 
     def forward(self, tensormap: TensorMap) -> TensorMap:
-        output_blocks: list[TensorBlock] = []
+        output_blocks: List[TensorBlock] = []
         for key, linear in self.linear.items():
             block = tensormap.block(int(key))
             labels = Labels(

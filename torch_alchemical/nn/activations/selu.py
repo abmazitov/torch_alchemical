@@ -1,3 +1,5 @@
+from typing import List
+
 import torch
 from metatensor.torch import TensorBlock, TensorMap
 
@@ -9,7 +11,7 @@ class SELU(torch.nn.Module):
         self.scaling = 1.0
 
     def forward(self, tensormap: TensorMap) -> TensorMap:
-        output_blocks: list[TensorBlock] = []
+        output_blocks: List[TensorBlock] = []
         for block in tensormap.blocks():
             new_block = TensorBlock(
                 values=self.selu(block.values) * self.scaling,
