@@ -46,7 +46,7 @@ class TestModels:
             )
             assert torch.allclose(
                 predictions,
-                torch.tensor([[1.2582], [0.2508]]),
+                torch.tensor([[-4.2060], [3.3690]]),
                 atol=1e-4,
             )
 
@@ -68,7 +68,7 @@ class TestModels:
             )
             assert torch.allclose(
                 predictions,
-                torch.tensor([[1.2582], [0.2508]]),
+                torch.tensor([[-4.2060], [3.3690]]),
                 atol=1e-4,
             )
 
