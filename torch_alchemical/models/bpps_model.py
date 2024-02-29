@@ -19,28 +19,23 @@ class BPPSModel(torch.nn.Module):
         radial_basis_type: str,
         trainable_basis: Optional[bool] = True,
         normalize: Optional[bool] = True,
-        basis_normalization_factor: Optional[float] = None,
         basis_scale: Optional[float] = 3.0,
-        energies_scale_factor: Optional[float] = 1.0,
-        average_number_of_atoms: Optional[float] = 1.0,
     ):
         super().__init__()
-        if isinstance(unique_numbers, np.ndarray):
-            unique_numbers = unique_numbers.tolist()
         self.unique_numbers = unique_numbers
-        self.energies_scale_factor = energies_scale_factor
-        self.average_number_of_atoms = average_number_of_atoms
-        self.composition_layer = torch.nn.Linear(
-            len(unique_numbers), output_size, bias=False
+        self.register_buffer(
+            "composition_weights", torch.zeros((output_size, len(unique_numbers)))
         )
+        self.register_buffer("normalization_factor", torch.tensor(1.0))
+        self.register_buffer("energies_scale_factor", torch.tensor(1.0))
         self.ps_features_layer = PowerSpectrumFeatures(
             all_species=unique_numbers,
             cutoff_radius=cutoff,
             basis_cutoff=basis_cutoff_power_spectrum,
             radial_basis_type=radial_basis_type,
-            basis_normalization_factor=basis_normalization_factor,
             basis_scale=basis_scale,
             trainable_basis=trainable_basis,
+            normalize=normalize,
         )
         ps_input_size = self.ps_features_layer.num_features
         self.normalize = normalize
@@ -71,6 +66,31 @@ class BPPSModel(torch.nn.Module):
         )
         self.nn = torch.nn.ModuleList(layers)
 
+    def set_composition_weights(
+        self,
+        composition_weights: torch.Tensor,
+    ):
+        if composition_weights.shape != self.composition_weights.shape:
+            raise ValueError(
+                "The shape of the composition weights does not match "
+                + f"the expected shape {composition_weights.shape}."
+            )
+        self.composition_weights = composition_weights
+
+    def set_normalization_factor(self, normalization_factor: torch.Tensor):
+        self.normalization_factor = normalization_factor
+
+    def set_energies_scale_factor(self, energies_scale_factor: torch.Tensor):
+        self.energies_scale_factor = energies_scale_factor
+
+    def set_basis_normalization_factor(self, basis_normalization_factor: torch.Tensor):
+        self.ps_features_layer.spex_calculator.normalization_factor = 1.0 / torch.sqrt(
+            basis_normalization_factor
+        )
+        self.ps_features_layer.spex_calculator.normalization_factor_0 = (
+            1.0 / basis_normalization_factor ** (3 / 4)
+        )
+
     def forward(
         self,
         positions: torch.Tensor,
@@ -98,7 +118,7 @@ class BPPSModel(torch.nn.Module):
             source=features,
         )
         if self.normalize:
-            energies = energies / self.average_number_of_atoms
+            energies = energies / self.normalization_factor
         if self.training:
             return energies
         else:
@@ -107,10 +127,11 @@ class BPPSModel(torch.nn.Module):
                     numbers,
                     self.unique_numbers,
                     batch,
-                    self.composition_layer.weight.dtype,
+                    self.composition_weights.dtype,
                 )
             )
-            energies = energies * self.energies_scale_factor + self.composition_layer(
-                compositions
+            energies = (
+                energies * self.energies_scale_factor
+                + compositions @ self.composition_weights.T
             )
             return energies

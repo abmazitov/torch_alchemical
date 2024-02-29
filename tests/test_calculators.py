@@ -36,6 +36,7 @@ class TestCalculators:
             radial_basis_type=self.hypers["radial basis"]["type"],
             trainable_basis=self.hypers["radial basis"]["mlp"],
             num_pseudo_species=self.hypers["alchemical"],
+            normalize=self.hypers["normalize"],
         ).to(self.device)
         with torch.no_grad():
             ps = calculator(

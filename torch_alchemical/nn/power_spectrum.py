@@ -1,6 +1,4 @@
-from typing import List, Optional, Union
-
-import numpy as np
+from typing import List, Optional
 import torch
 from metatensor.torch import Labels, TensorBlock, TensorMap
 from torch_spex.spherical_expansions import SphericalExpansion
@@ -11,24 +9,21 @@ from torch_alchemical.utils import get_torch_spex_dict
 class PowerSpectrumFeatures(torch.nn.Module):
     def __init__(
         self,
-        all_species: Union[list, np.ndarray],
+        all_species: List[int],
         cutoff_radius: float,
         basis_cutoff: float,
         radial_basis_type: Optional[str] = "le",
-        basis_normalization_factor: Optional[float] = None,
         basis_scale: Optional[float] = 3.0,
         trainable_basis: Optional[bool] = True,
         num_pseudo_species: Optional[int] = None,
+        normalize: Optional[bool] = True,
     ):
         super().__init__()
-        if isinstance(all_species, np.ndarray):
-            all_species = all_species.tolist()
         self.all_species = all_species
         self.cutoff_radius = cutoff_radius
         self.basis_cutoff = basis_cutoff
         self.basis_scale = basis_scale
         self.radial_basis_type = radial_basis_type
-        self.basis_normalization_factor = basis_normalization_factor
         self.trainable_basis = trainable_basis
         self.num_pseudo_species = num_pseudo_species
         hypers = {
@@ -43,8 +38,8 @@ class PowerSpectrumFeatures(torch.nn.Module):
         }
         if self.num_pseudo_species is not None:
             hypers["alchemical"] = self.num_pseudo_species
-        if self.basis_normalization_factor:
-            hypers["normalize"] = self.basis_normalization_factor
+        if normalize:
+            hypers["normalize"] = 1.0
         self.spex_calculator = SphericalExpansion(
             hypers=hypers,
             all_species=self.all_species,

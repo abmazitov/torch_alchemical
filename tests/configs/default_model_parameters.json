@@ -8,8 +8,5 @@
     "basis_cutoff_power_spectrum": 50,
     "radial_basis_type": "le",
     "trainable_basis": true,
-    "normalize": true,
-    "basis_normalization_factor": 1.0,
-    "average_number_of_atoms": 1.0,
-    "energies_scale_factor": 1.0
+    "normalize": true
 }

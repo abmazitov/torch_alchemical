@@ -5,12 +5,13 @@ import lightning.pytorch as pl
 import torch
 
 from torch_alchemical.models import AlchemicalModel
+from torch_alchemical.utils import get_compositions_from_numbers
 from torch_alchemical.tools.train import LitDataModule, LitModel
 from torch_alchemical.tools.train.initialize import (
-    initialize_average_number_of_atoms,
-    initialize_combining_matrix,
-    initialize_composition_layer_weights,
-    initialize_energies_forces_scale_factor,
+    get_average_number_of_atoms,
+    get_composition_weights,
+    get_energies_scale_factor,
+    rescale_energies_and_forces,
 )
 
 warnings.filterwarnings("ignore")
@@ -36,16 +37,47 @@ class TestTrainingRoutine:
         model = AlchemicalModel(
             unique_numbers=datamodule.unique_numbers,
             num_pseudo_species=4,
-            **self.default_model_parameters
+            contract_center_species=True,
+            **self.default_model_parameters,
         )
+
+        train_dataset = datamodule.train_dataset
+        unique_numbers = datamodule.unique_numbers
+        numbers = torch.cat([data.numbers for data in train_dataset])
+        batch = torch.cat(
+            [
+                torch.repeat_interleave(torch.tensor([i]), data.num_nodes)
+                for i, data in enumerate(train_dataset)
+            ]
+        )
+        compositions = torch.stack(
+            get_compositions_from_numbers(numbers, unique_numbers, batch)
+        )
+        composition_weights = get_composition_weights(train_dataset, compositions)
+        energies_scale_factor = get_energies_scale_factor(
+            train_dataset, compositions, composition_weights
+        )
+        average_number_of_atoms = get_average_number_of_atoms(train_dataset)
+        average_number_of_neighbors = torch.mean(
+            torch.tensor(
+                [data.edge_index.shape[1] / data.pos.shape[0] for data in train_dataset]
+            )
+        )
+
+        model.set_normalization_factor(average_number_of_atoms)
+        model.set_energies_scale_factor(energies_scale_factor)
+        model.set_basis_normalization_factor(average_number_of_neighbors)
+        model.set_composition_weights(composition_weights)
+
+        # Rescaling the energies and forces
+        rescale_energies_and_forces(
+            train_dataset, compositions, composition_weights, energies_scale_factor
+        )
+
         litmodel = LitModel(model=model, **self.litmodel_parameters)
-        initialize_composition_layer_weights(litmodel.model, datamodule)
-        initialize_combining_matrix(litmodel.model, datamodule)
-        initialize_average_number_of_atoms(litmodel.model, datamodule)
-        initialize_energies_forces_scale_factor(litmodel.model, datamodule)
 
         trainer = pl.Trainer(
-            max_steps=1,
+            max_steps=2,
             enable_model_summary=False,
             enable_checkpointing=False,
             enable_progress_bar=False,
