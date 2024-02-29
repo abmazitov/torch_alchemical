@@ -8,5 +8,6 @@
         "r_cut": 5.0,
         "E_max": 50,
         "mlp": true
-    }
+    },
+    "normalize": true
 }

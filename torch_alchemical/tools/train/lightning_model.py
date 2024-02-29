@@ -30,7 +30,7 @@ class LitModel(pl.LightningModule):
         self.train_energies_mae = 0.0
         self.train_forces_mae = 0.0
 
-    def forward(self, batch, training=True):
+    def forward(self, batch):
         predicted_energies = self.model(
             positions=batch.pos,
             cells=batch.cell,
@@ -81,11 +81,11 @@ class LitModel(pl.LightningModule):
         )
         predicted_energies = (
             predicted_energies * self.model.energies_scale_factor
-            + self.model.composition_layer(compositions)
+            + compositions @ self.model.composition_weights.T
         )
         target_energies = (
             target_energies * self.model.energies_scale_factor
-            + self.model.composition_layer(compositions)
+            + compositions @ self.model.composition_weights.T
         )
         predicted_forces = predicted_forces * self.model.energies_scale_factor
         target_forces = target_forces * self.model.energies_scale_factor

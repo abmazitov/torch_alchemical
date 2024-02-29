@@ -46,7 +46,29 @@ class TestModels:
             )
             assert torch.allclose(
                 predictions,
-                torch.tensor([[22.9730], [-4.1153]]),
+                torch.tensor([[1.2582], [0.2508]]),
+                atol=1e-4,
+            )
+
+    def test_bpps_model_eval_mode(self):
+        torch.manual_seed(0)
+        model = BPPSModel(
+            unique_numbers=self.all_species,
+            **self.default_model_parameters,
+        ).to(self.device)
+        with torch.no_grad():
+            model.eval()
+            predictions = model(
+                positions=self.batch.pos,
+                cells=self.batch.cell,
+                numbers=self.batch.numbers,
+                edge_indices=self.batch.edge_index,
+                edge_offsets=self.batch.edge_offsets,
+                batch=self.batch.batch,
+            )
+            assert torch.allclose(
+                predictions,
+                torch.tensor([[1.2582], [0.2508]]),
                 atol=1e-4,
             )
 
@@ -68,7 +90,7 @@ class TestModels:
                 batch=self.batch.batch,
             )
             assert torch.allclose(
-                predictions, torch.tensor([[-2.3405], [11.4522]]), atol=1e-4
+                predictions, torch.tensor([[-17.0218], [41.9509]]), atol=1e-4
             )
 
     def test_alchemical_model_without_contraction(self):
@@ -89,7 +111,29 @@ class TestModels:
                 batch=self.batch.batch,
             )
             assert torch.allclose(
-                predictions, torch.tensor([[3.7277], [-3.4775]]), atol=1e-4
+                predictions, torch.tensor([[4.9560], [16.7199]]), atol=1e-4
+            )
+
+    def test_alchemical_model_eval_mode(self):
+        torch.manual_seed(0)
+        model = AlchemicalModel(
+            unique_numbers=self.all_species,
+            contract_center_species=True,
+            num_pseudo_species=4,
+            **self.default_model_parameters,
+        ).to(self.device)
+        with torch.no_grad():
+            model.eval()
+            predictions = model(
+                positions=self.batch.pos,
+                cells=self.batch.cell,
+                numbers=self.batch.numbers,
+                edge_indices=self.batch.edge_index,
+                edge_offsets=self.batch.edge_offsets,
+                batch=self.batch.batch,
+            )
+            assert torch.allclose(
+                predictions, torch.tensor([[-17.0218], [41.9509]]), atol=1e-4
             )
 
     def test_model_autograd_forces(self):

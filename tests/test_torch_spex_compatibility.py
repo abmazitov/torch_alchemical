@@ -240,7 +240,7 @@ class TestTorchSpexCompatibility:
 class TestAlchemicalModelCompatibility:
     device = "cpu"
     frames = read("./tests/data/hea_bulk_test_sample.xyz", index=":")
-    all_species = np.unique(np.hstack([frame.numbers for frame in frames]))
+    all_species = np.unique(np.hstack([frame.numbers for frame in frames])).tolist()
     with open("./tests/configs/default_hypers_alchemical.json", "r") as f:
         hypers_spex = json.load(f)
         hypers_spex["normalize"] = 1.0
@@ -262,7 +262,7 @@ class TestAlchemicalModelCompatibility:
     torch.manual_seed(0)
     spex_model = TorchSpexAlchemicalModel(
         hypers_spex,
-        all_species.tolist(),
+        all_species,
         num_hidden=64,
         n_pseudo=hypers_spex["alchemical"],
         average_number_of_atoms=1.0,
@@ -278,12 +278,10 @@ class TestAlchemicalModelCompatibility:
         unique_numbers=all_species,
         cutoff=hypers_spex["cutoff radius"],
         contract_center_species=True,
-        basis_normalization_factor=hypers_spex["normalize"],
         trainable_basis=hypers_spex["radial basis"]["mlp"],
         radial_basis_type=hypers_spex["radial basis"]["type"],
         basis_cutoff_power_spectrum=hypers_spex["radial basis"]["E_max"],
         basis_scale=hypers_spex["radial basis"]["scale"],
-        average_number_of_atoms=1.0,
     )
 
     vex_calculator = (
