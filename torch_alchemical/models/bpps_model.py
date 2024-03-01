@@ -36,11 +36,10 @@ class BPPSModel(torch.nn.Module):
             trainable_basis=trainable_basis,
             normalize=normalize,
         )
-        ps_input_size = self.ps_features_layer.num_features
         self.normalize = normalize
         if self.normalize:
-            self.layer_norm = LayerNorm(ps_input_size)
-        layer_size = [ps_input_size] + hidden_sizes
+            self.layer_norm = LayerNorm(self._num_features)
+        layer_size = [self._num_features] + hidden_sizes
         layers: List[torch.nn.Module] = []
         linear_layer_keys = Labels(
             names=["a_i"], values=torch.tensor(self.unique_numbers).view(-1, 1)
@@ -90,6 +89,24 @@ class BPPSModel(torch.nn.Module):
             1.0 / basis_normalization_factor ** (3 / 4)
         )
 
+    def _get_features(
+        self,
+        positions: torch.Tensor,
+        cells: torch.Tensor,
+        numbers: torch.Tensor,
+        edge_indices: torch.Tensor,
+        edge_offsets: torch.Tensor,
+        batch: torch.Tensor,
+    ):
+
+        return self.ps_features_layer(
+            positions, cells, numbers, edge_indices, edge_offsets, batch
+        )
+
+    @property
+    def _num_features(self):
+        return self.ps_features_layer.num_features
+
     def forward(
         self,
         positions: torch.Tensor,
@@ -99,14 +116,15 @@ class BPPSModel(torch.nn.Module):
         edge_offsets: torch.Tensor,
         batch: torch.Tensor,
     ):
-        ps = self.ps_features_layer(
+        features = self._get_features(
             positions, cells, numbers, edge_indices, edge_offsets, batch
         )
+
         if self.normalize:
-            ps = self.layer_norm(ps)
+            features = self.layer_norm(features)
         for layer in self.nn:
-            ps = layer(ps)
-        psnn = ps.keys_to_samples("a_i")
+            features = layer(features)
+        psnn = features.keys_to_samples("a_i")
         features = psnn.block().values
         energies = torch.zeros(
             len(torch.unique(batch)), 1, device=features.device, dtype=features.dtype
