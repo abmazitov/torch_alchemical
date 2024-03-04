@@ -93,7 +93,7 @@ class PowerSpectrumFeatures(torch.nn.Module):
                     for l in range(l_max + 1)  # noqa E741
                 ]
             )
-        return n_feat
+        return int(n_feat)
 
 
 class PowerSpectrum(torch.nn.Module):
