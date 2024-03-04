@@ -10,7 +10,6 @@ from torch_alchemical.utils import (
     get_target_properties,
 )
 
-
 device = "cpu"
 frames = read("./tests/data/hea_bulk_test_sample.xyz", index=":")
 all_species = np.unique(np.hstack([frame.numbers for frame in frames])).tolist()
