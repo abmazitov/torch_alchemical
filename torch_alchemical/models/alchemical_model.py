@@ -64,13 +64,13 @@ class AlchemicalModel(torch.nn.Module):
                 contraction_layer=contraction_layer,
             )
             linear_layer_keys = Labels(
-                names=["b_i"],
+                names=["center_pseudo_type"],
                 values=torch.arange(self.num_pseudo_species, device=device).view(-1, 1),
             )
         else:
             self.embedding = None  # type: ignore
             linear_layer_keys = Labels(
-                names=["a_i"],
+                names=["center_type"],
                 values=torch.tensor(self.unique_numbers, device=device).view(-1, 1),
             )
 
@@ -139,8 +139,8 @@ class AlchemicalModel(torch.nn.Module):
             ps = self.layer_norm(ps)
         if self.embedding is not None:
             ps = self.embedding(ps)
-            ps = ps.keys_to_samples("a_i")
-            ps = metatensor.torch.sum_over_samples(ps, "a_i")
+            ps = ps.keys_to_samples("center_type")
+            ps = metatensor.torch.sum_over_samples(ps, "center_type")
         else:
             pass
         for layer in self.nn:
