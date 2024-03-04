@@ -47,7 +47,7 @@ class AtomisticDataset(torch.utils.data.Dataset):
                 requires_grad=cell_requires_grad,
                 dtype=torch.get_default_dtype(),
             )
-            numbers = torch.tensor(frame.numbers, dtype=torch.long)
+            numbers = torch.tensor(frame.numbers, dtype=torch.int32)
             pbc = torch.tensor(frame.pbc, dtype=torch.bool)
 
             data = Data(

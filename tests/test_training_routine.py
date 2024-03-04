@@ -82,6 +82,7 @@ def test_training_routine():
         enable_checkpointing=False,
         enable_progress_bar=False,
         logger=False,
+        precision=64,
         accelerator="gpu" if torch.cuda.is_available() else "cpu",
     )
     trainer.fit(litmodel, datamodule)
