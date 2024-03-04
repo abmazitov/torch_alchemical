@@ -43,7 +43,7 @@ def normalize_ps(ps):
         )
     return TensorMap(
         keys=Labels(
-            names=("a_i",),
+            names=("center_type",),
             values=torch.tensor(new_keys, device=new_blocks[0].values.device).reshape(
                 -1, 1
             ),
@@ -76,7 +76,7 @@ class TorchSpexAlchemicalModel(torch.nn.Module):
             vex_calculator.radial_basis_calculator.combination_matrix
         )
         self.all_species_labels = metatensor.torch.Labels(
-            names=["a_i"],
+            names=["center_type"],
             values=torch.tensor(all_species).reshape(-1, 1),
         )
         self.n_pseudo = n_pseudo
@@ -141,7 +141,7 @@ class TorchSpexAlchemicalModel(torch.nn.Module):
         return energies, forces
 
     def _calculate_embedded_features(self, tmap):
-        tmap = tmap.keys_to_samples("a_i")
+        tmap = tmap.keys_to_samples("center_type")
         block = tmap.block()
         # print(block.values)
         samples = block.samples
@@ -350,7 +350,7 @@ class TestAlchemicalModelCompatibility:
             batch=self.batch.batch,
         )
         emb_ps = self.model.embedding(ps)
-        emb_ps = emb_ps.keys_to_samples(["a_i"])
+        emb_ps = emb_ps.keys_to_samples(["center_type"])
         emb_features = torch.stack([block.values for block in emb_ps], dim=-1)
         spex_emb_features, _ = self.spex_model._calculate_embedded_features(ps)
         assert torch.allclose(spex_emb_features, emb_features, atol=1e-10)
@@ -365,8 +365,8 @@ class TestAlchemicalModelCompatibility:
             batch=self.batch.batch,
         )
         emb_ps = self.model.embedding(ps)
-        emb_ps = emb_ps.keys_to_samples("a_i")
-        emb_ps = metatensor.torch.sum_over_samples(emb_ps, "a_i")
+        emb_ps = emb_ps.keys_to_samples("center_type")
+        emb_ps = metatensor.torch.sum_over_samples(emb_ps, "center_type")
 
         spex_embedded_features, _ = self.spex_model._calculate_embedded_features(ps)
 
