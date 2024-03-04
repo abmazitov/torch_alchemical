@@ -15,6 +15,7 @@ litmodel:
   forces_weight: 10.0
   lr: 1e-3
   weight_decay: 1e-5
+  warmup_epochs: 10
 
 model:
   hidden_sizes: [64, 64, 64]
