@@ -83,8 +83,10 @@ def test_loss_functions():
     loss_fns = [
         nn.MAELoss(),
         nn.MSELoss(),
+        nn.HuberLoss(),
         nn.WeightedMAELoss(energies_weight=1.0, forces_weight=1.0),
         nn.WeightedMSELoss(energies_weight=1.0, forces_weight=1.0),
+        nn.WeightedHuberLoss(energies_weight=1.0, forces_weight=1.0),
     ]
     for loss_fn in loss_fns:
         loss = loss_fn(

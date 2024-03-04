@@ -1,4 +1,5 @@
 import os
+from typing import List, Optional
 
 import lightning.pytorch as pl
 import torch
@@ -14,9 +15,10 @@ class LitModel(pl.LightningModule):
         model,
         energies_weight: float,
         forces_weight: float,
-        lr: float = 1e-3,
-        weight_decay: float = 1e-5,
-        log_wandb_tables: bool = True,
+        lr: Optional[float] = 1e-4,
+        weight_decay: Optional[float] = 1e-5,
+        warmup_epochs: Optional[int] = 0,
+        log_wandb_tables: Optional[bool] = True,
     ):
         super().__init__()
         self.model = model
@@ -24,6 +26,7 @@ class LitModel(pl.LightningModule):
         self.forces_weight = forces_weight
         self.lr = lr
         self.weight_decay = weight_decay
+        self.warmup_epochs = warmup_epochs
         self.log_wandb_tables = log_wandb_tables
 
     def on_train_epoch_start(self):
@@ -220,13 +223,11 @@ class LitModel(pl.LightningModule):
         optimizer = torch.optim.Adam(
             self.parameters(), lr=self.lr, weight_decay=self.weight_decay
         )
-        scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
-            optimizer, patience=10, factor=0.5, verbose=True
+        warmup_scheduler = torch.optim.lr_scheduler.LambdaLR(
+            optimizer,
+            lr_lambda=lambda epoch: (
+                epoch / self.warmup_epochs if epoch < self.warmup_epochs else 1
+            ),
+            verbose=True,
         )
-        return {
-            "optimizer": optimizer,
-            "lr_scheduler": {
-                "scheduler": scheduler,
-                "monitor": "val_energies_mae",
-            },
-        }
+        return [optimizer], [warmup_scheduler]
