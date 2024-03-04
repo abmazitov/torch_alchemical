@@ -42,7 +42,7 @@ class BPPSModel(torch.nn.Module):
         layer_size = [self._num_features] + hidden_sizes
         layers: List[torch.nn.Module] = []
         linear_layer_keys = Labels(
-            names=["a_i"], values=torch.tensor(self.unique_numbers).view(-1, 1)
+            names=["center_type"], values=torch.tensor(self.unique_numbers).view(-1, 1)
         )
         for layer_index in range(1, len(layer_size)):
             layers.append(
@@ -124,7 +124,7 @@ class BPPSModel(torch.nn.Module):
             features = self.layer_norm(features)
         for layer in self.nn:
             features = layer(features)
-        psnn = features.keys_to_samples("a_i")
+        psnn = features.keys_to_samples("center_type")
         features = psnn.block().values
         energies = torch.zeros(
             len(torch.unique(batch)), 1, device=features.device, dtype=features.dtype

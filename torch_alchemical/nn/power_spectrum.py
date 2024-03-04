@@ -111,7 +111,7 @@ class PowerSpectrum(torch.nn.Module):
             ps_values_ai = []
             for l in range(self.l_max + 1):  # noqa E741
                 cg = (2 * l + 1) ** (-0.5)
-                block_ai_l = spex.block({"lam": l, "a_i": a_i})
+                block_ai_l = spex.block({"o3_lambda": l, "center_type": a_i})
                 c_ai_l = block_ai_l.values
                 # same as this:
                 # ps_ai_l = cg*torch.einsum("ima, imb -> iab", c_ai_l, c_ai_l)
@@ -131,7 +131,7 @@ class PowerSpectrum(torch.nn.Module):
 
             block = TensorBlock(
                 values=ps_values_ai_cat,
-                samples=spex.block({"lam": 0, "a_i": a_i}).samples,
+                samples=spex.block({"o3_lambda": 0, "center_type": a_i}).samples,
                 components=[],
                 properties=Labels(
                     names=("property",),
@@ -145,7 +145,7 @@ class PowerSpectrum(torch.nn.Module):
 
         power_spectrum = TensorMap(
             keys=Labels(
-                names=("a_i",),
+                names=("center_type",),
                 values=torch.tensor(keys),  # .reshape((-1, 2)),
             ).to(device),
             blocks=blocks,

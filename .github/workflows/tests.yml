@@ -6,7 +6,7 @@ on:
     tags: "*"
   pull_request:
     # Check all PR
-    #
+
 jobs:
   tests:
     runs-on: ${{ matrix.os }}

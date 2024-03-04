@@ -14,40 +14,40 @@ torch.set_default_dtype(torch.float64)
 torch.manual_seed(0)
 
 
-class TestCalculators:
-    device = "cuda" if torch.cuda.is_available() else "cpu"
-    frames = read("./tests/data/hea_bulk_test_sample.xyz", index=":")
-    all_species = np.unique(np.hstack([frame.numbers for frame in frames])).tolist()
-    with open("./tests/configs/default_hypers_alchemical.json", "r") as f:
-        hypers = json.load(f)
-    transforms = [NeighborList(cutoff_radius=hypers["cutoff radius"])]
-    dataset = AtomisticDataset(
-        frames, target_properties=["energies"], transforms=transforms
-    )
-    dataloader = DataLoader(dataset, batch_size=len(frames), shuffle=False)
-    batch = next(iter(dataloader)).to(device)
+device = "cuda" if torch.cuda.is_available() else "cpu"
+frames = read("./tests/data/hea_bulk_test_sample.xyz", index=":")
+all_species = np.unique(np.hstack([frame.numbers for frame in frames])).tolist()
+with open("./tests/configs/default_hypers_alchemical.json", "r") as f:
+    hypers = json.load(f)
+transforms = [NeighborList(cutoff_radius=hypers["cutoff radius"])]
+dataset = AtomisticDataset(
+    frames, target_properties=["energies"], transforms=transforms
+)
+dataloader = DataLoader(dataset, batch_size=len(frames), shuffle=False)
+batch = next(iter(dataloader)).to(device)
 
-    def test_ps_features(self):
-        torch.manual_seed(0)
-        calculator = PowerSpectrumFeatures(
-            all_species=self.all_species,
-            cutoff_radius=self.hypers["cutoff radius"],
-            basis_cutoff=self.hypers["radial basis"]["E_max"],
-            radial_basis_type=self.hypers["radial basis"]["type"],
-            trainable_basis=self.hypers["radial basis"]["mlp"],
-            num_pseudo_species=self.hypers["alchemical"],
-            normalize=self.hypers["normalize"],
-        ).to(self.device)
-        with torch.no_grad():
-            ps = calculator(
-                positions=self.batch.pos,
-                cells=self.batch.cell,
-                numbers=self.batch.numbers,
-                edge_indices=self.batch.edge_index,
-                edge_offsets=self.batch.edge_offsets,
-                batch=self.batch.batch,
-            )
 
-        ref_ps = metatensor.torch.load("./tests/data/ps_calculator_test_data.npz")
+def test_ps_features():
+    torch.manual_seed(0)
+    calculator = PowerSpectrumFeatures(
+        all_species=all_species,
+        cutoff_radius=hypers["cutoff radius"],
+        basis_cutoff=hypers["radial basis"]["E_max"],
+        radial_basis_type=hypers["radial basis"]["type"],
+        trainable_basis=hypers["radial basis"]["mlp"],
+        num_pseudo_species=hypers["alchemical"],
+        normalize=hypers["normalize"],
+    ).to(device)
+    with torch.no_grad():
+        ps = calculator(
+            positions=batch.pos,
+            cells=batch.cell,
+            numbers=batch.numbers,
+            edge_indices=batch.edge_index,
+            edge_offsets=batch.edge_offsets,
+            batch=batch.batch,
+        )
 
-        assert metatensor.operations.allclose(ps, ref_ps, atol=1e-4)
+    ref_ps = metatensor.torch.load("./tests/data/ps_calculator_test_data.npz")
+
+    assert metatensor.operations.allclose(ps, ref_ps, atol=1e-4)
