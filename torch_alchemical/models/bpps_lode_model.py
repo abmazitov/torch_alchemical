@@ -32,11 +32,11 @@ class BPPSLodeModel(torch.nn.Module):
         super().__init__()
 
         self.meshlode_features_layer = MeshPotentialFeatures(
-            all_species=unique_numbers,
             atomic_smearing=lode_atomic_smearing,
             mesh_spacing=lode_mesh_spacing,
             interpolation_order=lode_interpolation_order,
             subtract_self=lode_subtract_self,
+            all_types=unique_numbers,
         )
         self.unique_numbers = unique_numbers
         self.register_buffer(

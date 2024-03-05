@@ -10,11 +10,11 @@ from ..utils import get_meshlode_systems
 class MeshPotentialFeatures(torch.nn.Module):
     def __init__(
         self,
-        all_species: List[int],
         atomic_smearing: float,
         mesh_spacing: Optional[float] = None,
         interpolation_order: Optional[int] = 4,
         subtract_self: Optional[bool] = False,
+        all_types: Optional[List[int]] = None,
     ):
         super().__init__()
         self.calcultor = MeshPotential(
@@ -22,11 +22,11 @@ class MeshPotentialFeatures(torch.nn.Module):
             mesh_spacing=mesh_spacing,
             interpolation_order=interpolation_order,
             subtract_self=subtract_self,
-            all_atomic_types=all_species,
+            all_types=all_types,
         )
 
         # In MeshLODE we create one subgrid per atomic type
-        self._num_features_per_atom = len(all_species)
+        self._num_features_per_atom = len( all_types)
 
     def forward(
         self,
