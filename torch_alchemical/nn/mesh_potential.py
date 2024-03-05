@@ -4,7 +4,7 @@ import torch
 from meshlode.metatensor import MeshPotential
 from metatensor.torch import TensorMap
 
-from ..utils import get_meshlode_systems
+from ..utils import get_metatensor_systems
 
 
 class MeshPotentialFeatures(torch.nn.Module):
@@ -37,7 +37,7 @@ class MeshPotentialFeatures(torch.nn.Module):
         edge_offsets: torch.Tensor,
         batch: torch.Tensor,
     ) -> TensorMap:
-        systems = get_meshlode_systems(
+        systems = get_metatensor_systems(
             batch=batch,
             species=numbers,
             positions=positions,

@@ -1,6 +1,6 @@
 from typing import List
-import metatensor
-import meshlode
+
+from metatensor.torch.atomistic import System
 import torch
 
 
@@ -9,12 +9,12 @@ def _find_change_indices(tensor):
     return [i for i in range(1, len(tensor)) if tensor[i] != tensor[i - 1]]
 
 
-def get_meshlode_systems(
+def get_metatensor_systems(
     batch: torch.tensor,
     species: torch.tensor,
     positions: torch.tensor,
     cells: torch.tensor,
-) -> List[metatensor.torch.atomistic.System]:
+) -> List[System]:
     """Convert arrays to meshlode systems based on contiguous indices in ``batch``."""
 
     # Find the indices where the batch index changes
@@ -26,6 +26,6 @@ def get_meshlode_systems(
 
     systems = []
     for s, p, c in zip(species_split, positions_split, cells_split):
-        systems.append(metatensor.torch.atomistic.System(species=s, positions=p, cell=c))
+        systems.append(System(types=s, positions=p, cell=c))
 
     return systems
