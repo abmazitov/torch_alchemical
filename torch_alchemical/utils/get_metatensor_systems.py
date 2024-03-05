@@ -4,16 +4,16 @@ from metatensor.torch.atomistic import System
 import torch
 
 
-def _find_change_indices(tensor):
+def _find_change_indices(tensor: torch.Tensor) -> torch.Tensor:
     """Find indices where values within a contiguous tensor change."""
-    return [i for i in range(1, len(tensor)) if tensor[i] != tensor[i - 1]]
+    return torch.where(tensor[1:] != tensor[:-1])[0] + 1
 
 
 def get_metatensor_systems(
-    batch: torch.tensor,
-    species: torch.tensor,
-    positions: torch.tensor,
-    cells: torch.tensor,
+    batch: torch.Tensor,
+    species: torch.Tensor,
+    positions: torch.Tensor,
+    cells: torch.Tensor,
 ) -> List[System]:
     """Convert arrays to meshlode systems based on contiguous indices in ``batch``."""
 
@@ -24,7 +24,7 @@ def get_metatensor_systems(
     positions_split = torch.tensor_split(positions, change_indices, dim=0)
     cells_split = cells.reshape(-1, 3, 3)
 
-    systems = []
+    systems: List[System] = []
     for s, p, c in zip(species_split, positions_split, cells_split):
         systems.append(System(types=s, positions=p, cell=c))
 
