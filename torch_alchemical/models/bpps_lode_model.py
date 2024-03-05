@@ -59,7 +59,7 @@ class BPPSLodeModel(torch.nn.Module):
         layer_size = [self._num_features] + hidden_sizes
         layers: List[torch.nn.Module] = []
         linear_layer_keys = Labels(
-            names=["a_i"], values=torch.tensor(self.unique_numbers).view(-1, 1)
+            names=["center_type"], values=torch.tensor(self.unique_numbers).view(-1, 1)
         )
         for layer_index in range(1, len(layer_size)):
             layers.append(
@@ -126,10 +126,10 @@ class BPPSLodeModel(torch.nn.Module):
         mp = mp.keys_to_properties("neighbor_type")
         blocks = [block.copy() for block in mp.blocks()]
         blocks = [TensorBlock(block.values, 
-                              Labels(["structure", "center"], block.samples.values), 
+                              Labels(["structure", "atom"], block.samples.values), 
                               block.components, 
                               block.properties) for block in blocks]
-        new_keys = Labels(["a_i"], mp.keys.values)
+        new_keys = Labels(["center_type"], mp.keys.values)
         mp = TensorMap(new_keys, blocks)
         return join([ps, mp], axis="properties")
 
@@ -157,7 +157,7 @@ class BPPSLodeModel(torch.nn.Module):
             features = self.layer_norm(features)
         for layer in self.nn:
             features = layer(features)
-        psnn = features.keys_to_samples("a_i")
+        psnn = features.keys_to_samples("center_type")
         features = psnn.block().values
         energies = torch.zeros(
             len(torch.unique(batch)), 1, device=features.device, dtype=features.dtype
