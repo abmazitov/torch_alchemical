@@ -6,7 +6,7 @@ import torch
 
 def _find_change_indices(tensor: torch.Tensor) -> torch.Tensor:
     """Find indices where values within a contiguous tensor change."""
-    return torch.where(tensor[1:] != tensor[:-1])[0] + 1
+    return (torch.where(tensor[1:] != tensor[:-1])[0] + 1).to("cpu")
 
 
 def get_metatensor_systems(
