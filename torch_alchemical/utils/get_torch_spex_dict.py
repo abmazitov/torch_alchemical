@@ -87,5 +87,4 @@ def get_torch_spex_dict(
         structure_pairs=structure_pairs.to(torch.int64),
         structure_offsets=structure_offsets,
     )
-    print("From func, cell_shifts_dtype:", batch_dict["cell_shifts"].dtype)
     return batch_dict
