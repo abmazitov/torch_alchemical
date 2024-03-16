@@ -1,13 +1,15 @@
 from typing import List, Optional
 
 import torch
-from metatensor.torch import Labels
+from metatensor.torch.operations import join
 
+from torch_alchemical.nn import MeshPotentialFeatures
 from torch_alchemical.nn import LayerNorm, LinearMap, PowerSpectrumFeatures, SiLU
 from torch_alchemical.utils import get_compositions_from_numbers
+from metatensor.torch import Labels, TensorMap, TensorBlock
 
 
-class BPPSModel(torch.nn.Module):
+class BPPSLodeModel(torch.nn.Module):
     def __init__(
         self,
         hidden_sizes: List[int],
@@ -16,11 +18,26 @@ class BPPSModel(torch.nn.Module):
         cutoff: float,
         basis_cutoff_power_spectrum: float,
         radial_basis_type: str,
+        lode_atomic_smearing: float,
         trainable_basis: Optional[bool] = True,
         normalize: Optional[bool] = True,
         basis_scale: Optional[float] = 3.0,
+        lode_mesh_spacing: Optional[float] = None,
+        lode_interpolation_order: Optional[int] = 4,
+        lode_subtract_self: Optional[bool] = False,
     ):
+
+        # Call parent `__init__` after we initlize the MeshPotentialFeatures instance to
+        # have a working `_num_features` property.
         super().__init__()
+
+        self.meshlode_features_layer = MeshPotentialFeatures(
+            atomic_smearing=lode_atomic_smearing,
+            mesh_spacing=lode_mesh_spacing,
+            interpolation_order=lode_interpolation_order,
+            subtract_self=lode_subtract_self,
+            all_types=unique_numbers,
+        )
         self.unique_numbers = unique_numbers
         self.register_buffer(
             "composition_weights", torch.zeros((output_size, len(unique_numbers)))
@@ -63,7 +80,7 @@ class BPPSModel(torch.nn.Module):
             )
         )
         self.nn = torch.nn.ModuleList(layers)
-
+    
     def set_composition_weights(
         self,
         composition_weights: torch.Tensor,
@@ -99,14 +116,30 @@ class BPPSModel(torch.nn.Module):
         batch: torch.Tensor,
     ):
 
-        return self.ps_features_layer(
+        ps = self.ps_features_layer(
             positions, cells, numbers, edge_indices, edge_offsets, batch
         )
 
+        mp = self.meshlode_features_layer(
+            positions, cells, numbers, edge_indices, edge_offsets, batch
+        )
+        mp = mp.keys_to_properties("neighbor_type")
+        blocks = [block.copy() for block in mp.blocks()]
+        blocks = [TensorBlock(block.values, 
+                              Labels(["structure", "atom"], block.samples.values), 
+                              block.components, 
+                              block.properties) for block in blocks]
+        new_keys = Labels(["center_type"], mp.keys.values)
+        mp = TensorMap(new_keys, blocks)
+        return join([ps, mp], axis="properties")
+
     @property
     def _num_features(self):
-        return self.ps_features_layer.num_features
-
+        return (
+            self.ps_features_layer.num_features
+            + self.meshlode_features_layer.num_features
+        )
+    
     def forward(
         self,
         positions: torch.Tensor,

@@ -8,6 +8,7 @@ from .loss_functions.huber import HuberLoss, WeightedHuberLoss
 from .loss_functions.mae import MAELoss, WeightedMAELoss
 from .loss_functions.mse import MSELoss, WeightedMSELoss
 from .loss_functions.sse import SSELoss, WeightedSSELoss
+from .mesh_potential import MeshPotentialFeatures
 from .normalization.layer_norm import LayerNorm
 from .power_spectrum import PowerSpectrumFeatures
 
@@ -28,4 +29,5 @@ __all__ = [
     "HuberLoss",
     "WeightedHuberLoss",
     "AlchemicalEmbedding",
+    "MeshPotentialFeatures",
 ]

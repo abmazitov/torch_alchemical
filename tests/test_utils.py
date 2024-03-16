@@ -7,6 +7,7 @@ from torch_alchemical.data import AtomisticDataset
 from torch_alchemical.utils import (
     get_autograd_forces,
     get_compositions_from_numbers,
+    get_metatensor_systems,
     get_target_properties,
 )
 
@@ -40,3 +41,18 @@ def test_target_properties_getter():
     ref_properties = torch.load("./tests/data/hea_bulk_test_target_properties.pt")
     for key in properties.keys():
         assert torch.allclose(properties[key], ref_properties[key], atol=1e-4)
+
+
+def test_get_metatensor_systems():
+    n_systems = 3
+    batch = torch.tensor([1, 1, 1, 1, 5, 5, 5, 5, 5, 5, 5, 7, 7, 7, 7, 7])
+    species = torch.ones(len(batch))
+    positions = torch.rand([len(batch), 3])
+    cells = torch.rand([3 * n_systems, 3])
+
+    systems = get_metatensor_systems(
+        batch=batch, types=species, positions=positions, cells=cells
+    )
+
+    assert len(systems) == n_systems
+    # TODO do some more asserts that this actually working

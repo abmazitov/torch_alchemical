@@ -56,7 +56,7 @@ class PowerSpectrumFeatures(torch.nn.Module):
         edge_indices: torch.Tensor,
         edge_offsets: torch.Tensor,
         batch: torch.Tensor,
-    ):
+    ) -> TensorMap:
         batch_dict = get_torch_spex_dict(
             positions, cells, numbers, edge_indices, edge_offsets, batch
         )
@@ -75,7 +75,7 @@ class PowerSpectrumFeatures(torch.nn.Module):
         return power_spectrum
 
     @property
-    def num_features(self):
+    def num_features(self) -> int:
         vex_calculator = self.spex_calculator.vector_expansion_calculator
         n_max = vex_calculator.radial_basis_calculator.n_max_l
         l_max = len(n_max) - 1
@@ -93,7 +93,7 @@ class PowerSpectrumFeatures(torch.nn.Module):
                     for l in range(l_max + 1)  # noqa E741
                 ]
             )
-        return n_feat
+        return int(n_feat)
 
 
 class PowerSpectrum(torch.nn.Module):
