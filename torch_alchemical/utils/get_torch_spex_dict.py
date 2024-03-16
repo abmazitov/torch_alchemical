@@ -79,12 +79,12 @@ def get_torch_spex_dict(
     batch_dict = dict(
         positions=positions,
         cells=cells,
-        species=numbers,
+        species=numbers.to(torch.int64),
         cell_shifts=edge_offsets.to(torch.int64),
-        centers=centers,
-        pairs=pairs,
-        structure_centers=structure_centers,
-        structure_pairs=structure_pairs,
+        centers=centers.to(torch.int64),
+        pairs=pairs.to(torch.int64),
+        structure_centers=structure_centers.to(torch.int64),
+        structure_pairs=structure_pairs.to(torch.int64),
         structure_offsets=structure_offsets,
     )
     return batch_dict

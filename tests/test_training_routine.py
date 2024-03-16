@@ -74,14 +74,15 @@ def test_training_routine():
         train_dataset, compositions, composition_weights, energies_scale_factor
     )
 
-    litmodel = LitModel(model=model, **litmodel_parameters)
+    litmodel = LitModel(model=model, **litmodel_parameters, warmup_epochs=1)
 
     trainer = pl.Trainer(
-        max_steps=2,
+        max_epochs=2,
         enable_model_summary=False,
         enable_checkpointing=False,
         enable_progress_bar=False,
         logger=False,
+        precision=64,
         accelerator="gpu" if torch.cuda.is_available() else "cpu",
     )
     trainer.fit(litmodel, datamodule)

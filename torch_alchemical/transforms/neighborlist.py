@@ -29,9 +29,13 @@ class NeighborList(BaseTransform):
             use_scaled_positions=False,
         )
         edge_index = torch.stack(
-            [torch.LongTensor(edge_src), torch.LongTensor(edge_dst)], dim=0
+            [
+                torch.tensor(edge_src, dtype=torch.int32),
+                torch.tensor(edge_dst, dtype=torch.int32),
+            ],
+            dim=0,
         )
-        edge_offsets = torch.tensor(edge_offsets, dtype=torch.get_default_dtype())
+        edge_offsets = torch.tensor(edge_offsets, dtype=torch.int32)
         data.edge_index = edge_index
         data.edge_offsets = edge_offsets
         return data
