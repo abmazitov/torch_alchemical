@@ -56,10 +56,8 @@ class BPPSLodeModel(torch.nn.Module):
         )
         self.normalize = normalize
         if self.normalize:
-            print("Normalizing")
             self.layer_norm_ps = LayerNorm(self._num_features_ps)
             self.layer_norm_mp = LayerNorm(self._num_features_mp)
-            print("Normalized")
         layer_size_ps = [self._num_features_ps] + hidden_sizes_ps
         layer_size_mp = [self._num_features_mp] + hidden_sizes_mp
         layers_ps: List[torch.nn.Module] = self._create_linear_layers(layer_size_ps, output_size)
@@ -168,6 +166,13 @@ class BPPSLodeModel(torch.nn.Module):
         )
 
         if self.normalize:
+            #print("Normalizing")
+            #print(features_mp)
+            #print(features_ps)
+            #print(self.layer_norm_ps)
+            #print(self.layer_norm_mp)
+            #print(self.meshlode_features_layer.num_features)
+            #print(self.ps_features_layer.num_features)
             features_ps = self.layer_norm_ps(features_ps)
             features_mp = self.layer_norm_mp(features_mp)
         for layer in self.nn_ps:
