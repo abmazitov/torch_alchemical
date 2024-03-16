@@ -112,9 +112,11 @@ class BPPSLodeModel(torch.nn.Module):
         edge_offsets: torch.Tensor,
         batch: torch.Tensor,
     ):
-        return self.meshlode_features_layer(
+        mp = self.meshlode_features_layer(
             positions, cells, numbers, edge_indices, edge_offsets, batch
         )
+        mp = mp.keys_to_properties("neighbor_type")
+        return mp
 
     @property
     def _num_features_ps(self):
@@ -166,13 +168,6 @@ class BPPSLodeModel(torch.nn.Module):
         )
 
         if self.normalize:
-            #print("Normalizing")
-            #print(features_mp)
-            #print(features_ps)
-            #print(self.layer_norm_ps)
-            #print(self.layer_norm_mp)
-            #print(self.meshlode_features_layer.num_features)
-            #print(self.ps_features_layer.num_features)
             features_ps = self.layer_norm_ps(features_ps)
             features_mp = self.layer_norm_mp(features_mp)
         for layer in self.nn_ps:
