@@ -208,12 +208,10 @@ class BPPSLodeModel(torch.nn.Module):
                     self.composition_weights.dtype,
                 )
             )
-            energies_ps = (
-                energies_ps * self.energies_scale_factor
+            energies = energies_ps + energies_mp
+            
+            energies = (
+                energies * self.energies_scale_factor
                 + compositions @ self.composition_weights.T
             )
-            energies_mp = (
-                energies_mp * self.energies_scale_factor
-                + compositions @ self.composition_weights.T
-            )
-            return energies_ps + energies_mp
+            return energies
