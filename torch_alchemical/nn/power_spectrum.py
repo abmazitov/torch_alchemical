@@ -45,7 +45,7 @@ class PowerSpectrumFeatures(torch.nn.Module):
             hypers=hypers,
             all_species=self.all_species,
         )
-        self.l_max = self.spex_calculator.vector_expansion_calculator.l_max
+        self.l_max = self.spex_calculator.l_max
         self.ps_calculator = PowerSpectrum(self.l_max, all_species)
 
     def forward(
@@ -76,8 +76,7 @@ class PowerSpectrumFeatures(torch.nn.Module):
 
     @property
     def num_features(self):
-        vex_calculator = self.spex_calculator.vector_expansion_calculator
-        n_max = vex_calculator.radial_basis_calculator.n_max_l
+        n_max = self.spex_calculator.radial_basis_calculator.n_max_l
         l_max = len(n_max) - 1
         if self.num_pseudo_species is None:
             n_feat = sum(
