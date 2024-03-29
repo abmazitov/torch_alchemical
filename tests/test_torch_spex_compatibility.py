@@ -65,15 +65,14 @@ class TorchSpexAlchemicalModel(torch.nn.Module):
         super().__init__()
         self.all_species = all_species
         self.spherical_expansion_calculator = SphericalExpansion(hypers, all_species)
-        vex_calculator = self.spherical_expansion_calculator.vector_expansion_calculator
-        n_max = vex_calculator.radial_basis_calculator.n_max_l
+        n_max = self.spherical_expansion_calculator.radial_basis_calculator.n_max_l
         l_max = len(n_max) - 1
         n_feat = sum(
             [n_max[l] ** 2 * n_pseudo**2 for l in range(l_max + 1)]  # noqa E471
         )
         self.ps_calculator = PowerSpectrum(l_max, all_species)
         self.combination_matrix = (
-            vex_calculator.radial_basis_calculator.combination_matrix
+            self.spherical_expansion_calculator.radial_basis_calculator.combination_matrix
         )
         self.all_species_labels = metatensor.torch.Labels(
             names=["center_type"],
@@ -284,12 +283,11 @@ class TestAlchemicalModelCompatibility:
         basis_scale=hypers_spex["radial basis"]["scale"],
     )
 
-    vex_calculator = (
-        spex_model.spherical_expansion_calculator.vector_expansion_calculator
+    rb_calculator = spex_model.spherical_expansion_calculator.radial_basis_calculator
+    contraction_layer = rb_calculator.combination_matrix
+    model.ps_features_layer.spex_calculator.vector_expansion_calculator = (
+        spex_model.spherical_expansion_calculator
     )
-    rb_calculator = vex_calculator.radial_basis_calculator
-    contraction_layer = vex_calculator.radial_basis_calculator.combination_matrix
-    model.ps_features_layer.spex_calculator.vector_expansion_calculator = vex_calculator
     model.embedding.contraction_layer = contraction_layer
 
     layer_norm = LayerNorm(model.ps_features_layer.num_features, eps=0.0)

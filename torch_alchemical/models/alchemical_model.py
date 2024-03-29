@@ -53,10 +53,8 @@ class AlchemicalModel(torch.nn.Module):
         ps_input_size = self.ps_features_layer.num_features
         if self.normalize:
             self.layer_norm = LayerNorm(ps_input_size)
-        vex_calculator = (
-            self.ps_features_layer.spex_calculator.vector_expansion_calculator
-        )
-        contraction_layer = vex_calculator.radial_basis_calculator.combination_matrix
+        spex_calculator = self.ps_features_layer.spex_calculator
+        contraction_layer = spex_calculator.radial_basis_calculator.combination_matrix
         device = contraction_layer.linear_layer.weight.device
         if self.contract_center_species:
             self.embedding = AlchemicalEmbedding(
