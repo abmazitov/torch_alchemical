@@ -17,7 +17,7 @@ class LitModel(pl.LightningModule):
         forces_weight: float,
         lr: Optional[float] = 1e-4,
         weight_decay: Optional[float] = 1e-5,
-        warmup_epochs: Optional[int] = 0,
+        lambda_lr: Optional[float] = 1.0,
         log_wandb_tables: Optional[bool] = True,
     ):
         super().__init__()
@@ -26,7 +26,7 @@ class LitModel(pl.LightningModule):
         self.forces_weight = forces_weight
         self.lr = lr
         self.weight_decay = weight_decay
-        self.warmup_epochs = warmup_epochs
+        self.lambda_lr = lambda_lr
         self.log_wandb_tables = log_wandb_tables
 
     def on_train_epoch_start(self):
@@ -225,9 +225,6 @@ class LitModel(pl.LightningModule):
         )
         warmup_scheduler = torch.optim.lr_scheduler.LambdaLR(
             optimizer,
-            lr_lambda=lambda epoch: (
-                epoch / self.warmup_epochs if epoch < self.warmup_epochs else 1
-            ),
-            verbose=True,
+            lr_lambda=lambda epoch: self.lambda_lr ** epoch
         )
         return [optimizer], [warmup_scheduler]
