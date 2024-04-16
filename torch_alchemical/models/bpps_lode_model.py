@@ -1,12 +1,16 @@
 from typing import List, Optional
 
 import torch
-from metatensor.torch.operations import join
+from metatensor.torch import Labels
 
-from torch_alchemical.nn import MeshPotentialFeatures
-from torch_alchemical.nn import LayerNorm, LinearMap, PowerSpectrumFeatures, SiLU
+from torch_alchemical.nn import (
+    LayerNorm,
+    LinearMap,
+    MeshPotentialFeatures,
+    PowerSpectrumFeatures,
+    SiLU,
+)
 from torch_alchemical.utils import get_compositions_from_numbers
-from metatensor.torch import Labels, TensorMap, TensorBlock
 
 
 class BPPSLodeModel(torch.nn.Module):
@@ -20,7 +24,8 @@ class BPPSLodeModel(torch.nn.Module):
         basis_cutoff_power_spectrum: float,
         radial_basis_type: str,
         lode_atomic_smearing: float,
-        trainable_basis: Optional[bool] = True,
+        charges_channels: Optional[int] = None,
+        trainable_basis: Optional[bool] = False,
         normalize: Optional[bool] = True,
         basis_scale: Optional[float] = 3.0,
         lode_mesh_spacing: Optional[float] = None,
@@ -38,6 +43,7 @@ class BPPSLodeModel(torch.nn.Module):
             interpolation_order=lode_interpolation_order,
             subtract_self=lode_subtract_self,
             all_types=unique_numbers,
+            charges_channels=charges_channels,
         )
         self.unique_numbers = unique_numbers
         self.register_buffer(
@@ -60,11 +66,23 @@ class BPPSLodeModel(torch.nn.Module):
             self.layer_norm_mp = LayerNorm(self._num_features_mp)
         layer_size_ps = [self._num_features_ps] + hidden_sizes_ps
         layer_size_mp = [self._num_features_mp] + hidden_sizes_mp
-        layers_ps: List[torch.nn.Module] = self._create_linear_layers(layer_size_ps, output_size)
-        layers_mp: List[torch.nn.Module] = self._create_linear_layers(layer_size_mp, output_size)
+        layers_ps: List[torch.nn.Module] = self._create_linear_layers(
+            layer_size_ps, output_size
+        )
+        layers_mp: List[torch.nn.Module] = self._create_linear_layers(
+            layer_size_mp, output_size
+        )
+        if charges_channels is not None:
+            layer_size_charges = [self._num_features_ps]  # + ...
+            layers_charges: List[torch.nn.Module] = self._create_linear_layers(
+                layer_size_charges, charges_channels
+            )
+            self.nn_charges = torch.nn.ModuleList(layers_charges)
+        else:
+            self.nn_charges = None
         self.nn_ps = torch.nn.ModuleList(layers_ps)
         self.nn_mp = torch.nn.ModuleList(layers_mp)
-    
+
     def set_composition_weights(
         self,
         composition_weights: torch.Tensor,
@@ -89,7 +107,7 @@ class BPPSLodeModel(torch.nn.Module):
         self.ps_features_layer.spex_calculator.normalization_factor_0 = (
             1.0 / basis_normalization_factor ** (3 / 4)
         )
-    
+
     def _get_features_ps(
         self,
         positions: torch.Tensor,
@@ -99,10 +117,11 @@ class BPPSLodeModel(torch.nn.Module):
         edge_offsets: torch.Tensor,
         batch: torch.Tensor,
     ):
-        return self.ps_features_layer(
+        ps = self.ps_features_layer(
             positions, cells, numbers, edge_indices, edge_offsets, batch
         )
-    
+        return ps
+
     def _get_features_mp(
         self,
         positions: torch.Tensor,
@@ -111,21 +130,25 @@ class BPPSLodeModel(torch.nn.Module):
         edge_indices: torch.Tensor,
         edge_offsets: torch.Tensor,
         batch: torch.Tensor,
+        charges: Optional[torch.Tensor] = None,
     ):
         mp = self.meshlode_features_layer(
-            positions, cells, numbers, edge_indices, edge_offsets, batch
+            positions, cells, numbers, edge_indices, edge_offsets, batch, charges
         )
-        mp = mp.keys_to_properties("neighbor_type")
+        if charges is None:
+            mp = mp.keys_to_properties("neighbor_type")
+        else:
+            mp = mp.keys_to_properties("charges_channel")
         return mp
 
     @property
     def _num_features_ps(self):
         return self.ps_features_layer.num_features
-    
+
     @property
     def _num_features_mp(self):
         return self.meshlode_features_layer.num_features
-    
+
     def _create_linear_layers(self, layer_size: List[int], output_size: int):
         layers: List[torch.nn.Module] = []
         linear_layer_keys = Labels(
@@ -163,10 +186,15 @@ class BPPSLodeModel(torch.nn.Module):
         features_ps = self._get_features_ps(
             positions, cells, numbers, edge_indices, edge_offsets, batch
         )
+        if self.nn_charges is not None:
+            charges = self.nn_charges[0](features_ps)
+            for layer in self.nn_charges[1:]:
+                charges = layer(charges)
+        else:
+            charges = None
         features_mp = self._get_features_mp(
-            positions, cells, numbers, edge_indices, edge_offsets, batch
+            positions, cells, numbers, edge_indices, edge_offsets, batch, charges
         )
-
         if self.normalize:
             features_ps = self.layer_norm_ps(features_ps)
             features_mp = self.layer_norm_mp(features_mp)
@@ -179,10 +207,16 @@ class BPPSLodeModel(torch.nn.Module):
         features_ps = psnn_ps.block().values
         features_mp = psnn_mp.block().values
         energies_ps = torch.zeros(
-            len(torch.unique(batch)), 1, device=features_ps.device, dtype=features_ps.dtype
+            len(torch.unique(batch)),
+            1,
+            device=features_ps.device,
+            dtype=features_ps.dtype,
         )
         energies_mp = torch.zeros(
-            len(torch.unique(batch)), 1, device=features_mp.device, dtype=features_mp.dtype
+            len(torch.unique(batch)),
+            1,
+            device=features_mp.device,
+            dtype=features_mp.dtype,
         )
         energies_ps.index_add_(
             dim=0,
@@ -209,7 +243,7 @@ class BPPSLodeModel(torch.nn.Module):
                 )
             )
             energies = energies_ps + energies_mp
-            
+
             energies = (
                 energies * self.energies_scale_factor
                 + compositions @ self.composition_weights.T

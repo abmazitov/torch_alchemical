@@ -1,7 +1,7 @@
 from typing import List
 
-from metatensor.torch.atomistic import System
 import torch
+from metatensor.torch.atomistic import System
 
 
 def _find_change_indices(tensor: torch.Tensor) -> torch.Tensor:

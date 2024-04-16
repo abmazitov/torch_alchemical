@@ -224,7 +224,6 @@ class LitModel(pl.LightningModule):
             self.parameters(), lr=self.lr, weight_decay=self.weight_decay
         )
         warmup_scheduler = torch.optim.lr_scheduler.LambdaLR(
-            optimizer,
-            lr_lambda=lambda epoch: self.lambda_lr ** epoch
+            optimizer, lr_lambda=lambda epoch: self.lambda_lr**epoch
         )
         return [optimizer], [warmup_scheduler]

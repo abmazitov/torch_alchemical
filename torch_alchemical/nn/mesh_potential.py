@@ -1,8 +1,9 @@
 from typing import List, Optional
 
+import metatensor.torch
 import torch
 from meshlode.metatensor import MeshPotential
-from metatensor.torch import TensorMap
+from metatensor.torch import Labels, TensorMap
 
 from ..utils import get_metatensor_systems
 
@@ -15,6 +16,7 @@ class MeshPotentialFeatures(torch.nn.Module):
         interpolation_order: Optional[int] = 4,
         subtract_self: Optional[bool] = False,
         all_types: Optional[List[int]] = None,
+        charges_channels: Optional[int] = None,
     ):
         super().__init__()
         self.calcultor = MeshPotential(
@@ -26,7 +28,10 @@ class MeshPotentialFeatures(torch.nn.Module):
         )
 
         # In MeshLODE we create one subgrid per atomic type
-        self._num_features_per_atom = len( all_types)
+        if charges_channels is not None:
+            self._num_features_per_atom = charges_channels
+        else:
+            self._num_features_per_atom = len(all_types)
 
     def forward(
         self,
@@ -36,6 +41,7 @@ class MeshPotentialFeatures(torch.nn.Module):
         edge_indices: torch.Tensor,
         edge_offsets: torch.Tensor,
         batch: torch.Tensor,
+        charges: Optional[torch.Tensor] = None,
     ) -> TensorMap:
         systems = get_metatensor_systems(
             batch=batch,
@@ -43,10 +49,35 @@ class MeshPotentialFeatures(torch.nn.Module):
             positions=positions,
             cells=cells,
         )
+        if charges is not None:
+            labels = [
+                Labels(names=["structure"], values=torch.tensor([[i]]))
+                for i in range(len(systems))
+            ]
+            list_of_charges = metatensor.torch.operations.split(
+                charges, axis="samples", grouped_labels=labels
+            )
+            for charge, system in zip(list_of_charges, systems):
+                charge = charge.keys_to_samples("center_type").block().values
+                samples = metatensor.torch.Labels(
+                    "atom", torch.arange(len(system)).reshape(-1, 1)
+                ).to(charge.device)
+                properties = metatensor.torch.Labels(
+                    "charge", torch.arange(charge.shape[1]).reshape(-1, 1)
+                ).to(charge.device)
+
+                charges_block = metatensor.torch.TensorBlock(
+                    samples=samples,
+                    components=[],
+                    properties=properties,
+                    values=charge,
+                )
+
+                system.add_data("charges", charges_block)
 
         return self.calcultor.compute(systems)
 
     @property
     def num_features(self) -> int:
-        # Is this total or per atom? if total multiply
+
         return self._num_features_per_atom
