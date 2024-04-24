@@ -6,7 +6,7 @@ import torch
 
 from torch_alchemical.nn import MAELoss, WeightedSSELoss
 from torch_alchemical.tools.logging.wandb import log_wandb_data
-from torch_alchemical.utils import get_autograd_forces, get_compositions_from_numbers
+from torch_alchemical.utils import get_autograd_forces
 
 
 class LitModel(pl.LightningModule):
@@ -76,23 +76,6 @@ class LitModel(pl.LightningModule):
 
         predicted_energies = predicted_energies.detach()
         predicted_forces = predicted_forces.detach()
-        numbers = batch.numbers
-        compositions = torch.stack(
-            get_compositions_from_numbers(
-                numbers, self.model.unique_numbers, batch.batch
-            )
-        )
-        predicted_energies = (
-            predicted_energies * self.model.energies_scale_factor
-            + compositions @ self.model.composition_weights.T
-        )
-        target_energies = (
-            target_energies * self.model.energies_scale_factor
-            + compositions @ self.model.composition_weights.T
-        )
-        predicted_forces = predicted_forces * self.model.energies_scale_factor
-        target_forces = target_forces * self.model.energies_scale_factor
-
         loss_fn = MAELoss()
         train_energies_mae = loss_fn(
             predicted_energies=predicted_energies.detach(),
@@ -189,9 +172,9 @@ class LitModel(pl.LightningModule):
         )
         val_energies_mae = self.val_energies_mae / num_batches
         val_forces_mae = self.val_forces_mae / num_batches
-        print("\n")
-        print(f"Energies MAE: Val {val_energies_mae:.3f}")
-        print(f"Forces MAE: Val {val_forces_mae:.3f}")
+        # print("\n")
+        # print(f"Energies MAE: Val {val_energies_mae:.3f}")
+        # print(f"Forces MAE: Val {val_forces_mae:.3f}")
         if isinstance(self.logger, pl.loggers.WandbLogger):
             torch.save(
                 self.predicted_energies,
@@ -223,7 +206,7 @@ class LitModel(pl.LightningModule):
         optimizer = torch.optim.Adam(
             self.parameters(), lr=self.lr, weight_decay=self.weight_decay
         )
-        warmup_scheduler = torch.optim.lr_scheduler.LambdaLR(
-            optimizer, lr_lambda=lambda epoch: self.lambda_lr**epoch
+        scheduler = torch.optim.lr_scheduler.OneCycleLR(
+            optimizer, max_lr=1e-2, total_steps=self.trainer.estimated_stepping_batches
         )
-        return [optimizer], [warmup_scheduler]
+        return [optimizer], [scheduler]

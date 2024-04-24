@@ -4,11 +4,11 @@ import torch
 from metatensor.torch import Labels
 
 from torch_alchemical.nn import (
-    LayerNorm,
     LinearMap,
     MeshPotentialFeatures,
     PowerSpectrumFeatures,
-    SiLU,
+    ReLU,
+    LayerNorm
 )
 from torch_alchemical.utils import get_compositions_from_numbers
 
@@ -26,7 +26,6 @@ class BPPSLodeModel(torch.nn.Module):
         lode_atomic_smearing: float,
         charges_channels: Optional[int] = None,
         trainable_basis: Optional[bool] = False,
-        normalize: Optional[bool] = True,
         basis_scale: Optional[float] = 3.0,
         lode_mesh_spacing: Optional[float] = None,
         lode_interpolation_order: Optional[int] = 4,
@@ -49,8 +48,6 @@ class BPPSLodeModel(torch.nn.Module):
         self.register_buffer(
             "composition_weights", torch.zeros((output_size, len(unique_numbers)))
         )
-        self.register_buffer("normalization_factor", torch.tensor(1.0))
-        self.register_buffer("energies_scale_factor", torch.tensor(1.0))
         self.ps_features_layer = PowerSpectrumFeatures(
             all_species=unique_numbers,
             cutoff_radius=cutoff,
@@ -58,12 +55,7 @@ class BPPSLodeModel(torch.nn.Module):
             radial_basis_type=radial_basis_type,
             basis_scale=basis_scale,
             trainable_basis=trainable_basis,
-            normalize=normalize,
         )
-        self.normalize = normalize
-        if self.normalize:
-            self.layer_norm_ps = LayerNorm(self._num_features_ps)
-            self.layer_norm_mp = LayerNorm(self._num_features_mp)
         layer_size_ps = [self._num_features_ps] + hidden_sizes_ps
         layer_size_mp = [self._num_features_mp] + hidden_sizes_mp
         layers_ps: List[torch.nn.Module] = self._create_linear_layers(
@@ -93,20 +85,6 @@ class BPPSLodeModel(torch.nn.Module):
                 + f"the expected shape {composition_weights.shape}."
             )
         self.composition_weights = composition_weights
-
-    def set_normalization_factor(self, normalization_factor: torch.Tensor):
-        self.normalization_factor = normalization_factor
-
-    def set_energies_scale_factor(self, energies_scale_factor: torch.Tensor):
-        self.energies_scale_factor = energies_scale_factor
-
-    def set_basis_normalization_factor(self, basis_normalization_factor: torch.Tensor):
-        self.ps_features_layer.spex_calculator.normalization_factor = 1.0 / torch.sqrt(
-            basis_normalization_factor
-        )
-        self.ps_features_layer.spex_calculator.normalization_factor_0 = (
-            1.0 / basis_normalization_factor ** (3 / 4)
-        )
 
     def _get_features_ps(
         self,
@@ -160,16 +138,17 @@ class BPPSLodeModel(torch.nn.Module):
                     keys=linear_layer_keys,
                     in_features=layer_size[layer_index - 1],
                     out_features=layer_size[layer_index],
-                    bias=False,
+                    bias=True,
                 )
             )
-            layers.append(SiLU())
+            layers.append(LayerNorm(layer_size[layer_index]))
+            layers.append(ReLU())
         layers.append(
             LinearMap(
                 keys=linear_layer_keys,
                 in_features=layer_size[-1],
                 out_features=output_size,
-                bias=False,
+                bias=True,
             )
         )
         return layers
@@ -195,9 +174,6 @@ class BPPSLodeModel(torch.nn.Module):
         features_mp = self._get_features_mp(
             positions, cells, numbers, edge_indices, edge_offsets, batch, charges
         )
-        if self.normalize:
-            features_ps = self.layer_norm_ps(features_ps)
-            features_mp = self.layer_norm_mp(features_mp)
         for layer in self.nn_ps:
             features_ps = layer(features_ps)
         for layer in self.nn_mp:
@@ -228,24 +204,18 @@ class BPPSLodeModel(torch.nn.Module):
             index=batch,
             source=features_mp,
         )
-        if self.normalize:
-            energies_ps = energies_ps / self.normalization_factor
-            energies_mp = energies_mp / self.normalization_factor
-        if self.training:
-            return energies_ps + energies_mp
-        else:
-            compositions = torch.stack(
-                get_compositions_from_numbers(
-                    numbers,
-                    self.unique_numbers,
-                    batch,
-                    self.composition_weights.dtype,
-                )
+        compositions = torch.stack(
+            get_compositions_from_numbers(
+                numbers,
+                self.unique_numbers,
+                batch,
+                self.composition_weights.dtype,
             )
-            energies = energies_ps + energies_mp
+        )
+        energies = energies_ps + energies_mp
 
-            energies = (
-                energies * self.energies_scale_factor
-                + compositions @ self.composition_weights.T
-            )
-            return energies
+        energies = (
+            energies
+            + compositions @ self.composition_weights.T
+        )
+        return energies

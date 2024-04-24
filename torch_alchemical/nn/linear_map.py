@@ -11,9 +11,6 @@ class LinearMap(torch.nn.Module):
         self.linear = torch.nn.ModuleDict()
         for i in range(len(keys)):
             layer = torch.nn.Linear(*args, **kwargs)
-            layer.weight.data.normal_(mean=0.0, std=layer.in_features ** (-0.5))
-            if layer.bias is not None:
-                layer.bias.data.zero_()
             self.linear[str(i)] = layer
 
     def forward(self, tensormap: TensorMap) -> TensorMap:
