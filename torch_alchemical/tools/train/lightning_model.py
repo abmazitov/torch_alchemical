@@ -4,7 +4,7 @@ from typing import Optional
 import lightning.pytorch as pl
 import torch
 
-from torch_alchemical.nn import MAELoss, WeightedSSELoss
+from torch_alchemical.nn import MAELoss, MSELoss, WeightedSSELoss
 from torch_alchemical.tools.logging.wandb import log_wandb_data
 from torch_alchemical.utils import get_autograd_forces
 
@@ -32,6 +32,7 @@ class LitModel(pl.LightningModule):
     def on_train_epoch_start(self):
         self.train_energies_mae = 0.0
         self.train_forces_mae = 0.0
+        self.train_energies_rmse = 0.0
 
     def forward(self, batch):
         predicted_energies = self.model(
@@ -103,8 +104,28 @@ class LitModel(pl.LightningModule):
             batch_size=self.trainer.datamodule.batch_size,
             sync_dist=True,
         )
+
+        loss_fn = MSELoss()
+        train_energies_rmse = torch.sqrt(
+            loss_fn(
+                predicted_energies=predicted_energies.detach(),
+                target_energies=target_energies,
+            )
+        ).item()
+
+        self.log(
+            "train_energies_rmse",
+            train_energies_rmse,
+            on_step=True,
+            on_epoch=True,
+            prog_bar=True,
+            batch_size=self.trainer.datamodule.batch_size,
+            sync_dist=True,
+        )
+
         self.train_energies_mae += train_energies_mae
         self.train_forces_mae += train_forces_mae
+        self.train_energies_rmse += train_energies_rmse
         return loss
 
     def on_train_epoch_end(self):
@@ -113,14 +134,17 @@ class LitModel(pl.LightningModule):
         )
         train_energies_mae = self.train_energies_mae / num_batches
         train_forces_mae = self.train_forces_mae / num_batches
+        train_energies_rmse = self.train_energies_rmse / num_batches
         print("\n")
         print(f"Energies MAE: Train {train_energies_mae:.3f}")
         print(f"Forces MAE: Train {train_forces_mae:.3f}")
+        print(f"Energies RMSE: Train {train_energies_rmse:.3f}")
 
     def on_validation_epoch_start(self):
         torch.set_grad_enabled(True)
         self.val_energies_mae = 0.0
         self.val_forces_mae = 0.0
+        self.val_energies_rmse = 0.0
         self.predicted_energies = []
         self.predicted_forces = []
         self.target_energies = []
@@ -159,8 +183,27 @@ class LitModel(pl.LightningModule):
             sync_dist=True,
             batch_size=self.trainer.datamodule.batch_size,
         )
+
+        loss_fn = MSELoss()
+        val_energies_rmse = torch.sqrt(
+            loss_fn(
+                predicted_energies=predicted_energies.detach(),
+                target_energies=target_energies,
+            )
+        ).item()
+        self.log(
+            "val_energies_rmse",
+            val_energies_rmse,
+            on_step=True,
+            on_epoch=True,
+            prog_bar=True,
+            sync_dist=True,
+            batch_size=self.trainer.datamodule.batch_size,
+        )
+
         self.val_energies_mae += val_energies_mae
         self.val_forces_mae += val_forces_mae
+        self.val_energies_rmse += val_energies_rmse
         self.predicted_energies.append(predicted_energies.cpu().detach())
         self.predicted_forces.append(predicted_forces.cpu().detach())
         self.target_energies.append(target_energies.cpu().detach())
@@ -172,9 +215,11 @@ class LitModel(pl.LightningModule):
         )
         val_energies_mae = self.val_energies_mae / num_batches
         val_forces_mae = self.val_forces_mae / num_batches
-        # print("\n")
-        # print(f"Energies MAE: Val {val_energies_mae:.3f}")
-        # print(f"Forces MAE: Val {val_forces_mae:.3f}")
+        val_energies_rmse = self.val_energies_rmse / num_batches
+        print("\n")
+        print(f"Energies MAE: Val {val_energies_mae:.3f}")
+        print(f"Forces MAE: Val {val_forces_mae:.3f}")
+        print(f"Energies RMSE: Val {val_energies_rmse:.3f}")
         if isinstance(self.logger, pl.loggers.WandbLogger):
             torch.save(
                 self.predicted_energies,

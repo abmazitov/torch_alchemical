@@ -4,11 +4,11 @@ import torch
 from metatensor.torch import Labels
 
 from torch_alchemical.nn import (
+    LayerNorm,
     LinearMap,
     MeshPotentialFeatures,
     PowerSpectrumFeatures,
     ReLU,
-    LayerNorm
 )
 from torch_alchemical.utils import get_compositions_from_numbers
 
@@ -214,8 +214,5 @@ class BPPSLodeModel(torch.nn.Module):
         )
         energies = energies_ps + energies_mp
 
-        energies = (
-            energies
-            + compositions @ self.composition_weights.T
-        )
+        energies = energies + compositions @ self.composition_weights.T
         return energies
