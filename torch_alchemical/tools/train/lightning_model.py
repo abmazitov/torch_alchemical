@@ -252,4 +252,10 @@ class LitModel(pl.LightningModule):
         scheduler = torch.optim.lr_scheduler.OneCycleLR(
             optimizer, max_lr=1e-2, total_steps=self.trainer.estimated_stepping_batches
         )
-        return [optimizer], [scheduler]
+        return {
+            "optimizer": optimizer,
+            "lr_scheduler": {
+                "scheduler": scheduler,
+                "interval": "step",
+            }
+        }
