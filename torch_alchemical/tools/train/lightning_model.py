@@ -17,7 +17,6 @@ class LitModel(pl.LightningModule):
         forces_weight: float,
         lr: Optional[float] = 1e-4,
         weight_decay: Optional[float] = 1e-5,
-        lambda_lr: Optional[float] = 1.0,
         log_wandb_tables: Optional[bool] = True,
     ):
         super().__init__()
@@ -26,7 +25,6 @@ class LitModel(pl.LightningModule):
         self.forces_weight = forces_weight
         self.lr = lr
         self.weight_decay = weight_decay
-        self.lambda_lr = lambda_lr
         self.log_wandb_tables = log_wandb_tables
 
     def on_train_epoch_start(self):
