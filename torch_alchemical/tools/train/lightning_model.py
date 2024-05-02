@@ -13,8 +13,9 @@ class LitModel(pl.LightningModule):
     def __init__(
         self,
         model,
-        energies_weight: float,
-        forces_weight: float,
+        predict_forces: bool,
+        energies_weight: Optional[float] = 1.0,
+        forces_weight: Optional[float] = 1.0,
         lr: Optional[float] = 1e-4,
         weight_decay: Optional[float] = 1e-5,
         log_wandb_tables: Optional[bool] = True,
@@ -22,15 +23,20 @@ class LitModel(pl.LightningModule):
         super().__init__()
         self.model = model
         self.energies_weight = energies_weight
-        self.forces_weight = forces_weight
+        if predict_forces:
+            self.forces_weight = forces_weight
+        else:
+            self.forces_weight = None
         self.lr = lr
         self.weight_decay = weight_decay
         self.log_wandb_tables = log_wandb_tables
+        self.predict_forces = predict_forces
 
     def on_train_epoch_start(self):
         self.train_energies_mae = 0.0
-        self.train_forces_mae = 0.0
         self.train_energies_rmse = 0.0
+        if self.predict_forces:
+            self.train_forces_mae = 0.0
 
     def forward(self, batch):
         predicted_energies = self.model(
@@ -41,9 +47,14 @@ class LitModel(pl.LightningModule):
             edge_offsets=batch.edge_offsets,
             batch=batch.batch,
         )
-        predicted_forces = get_autograd_forces(predicted_energies, batch.pos)[0]
         target_energies = batch.energies.view(-1, 1)
-        target_forces = batch.forces
+        if self.predict_forces:
+            predicted_forces = get_autograd_forces(predicted_energies, batch.pos)[0]
+            target_forces = batch.forces
+        else:
+            predicted_forces = None
+            target_forces = None
+
         return predicted_energies, predicted_forces, target_energies, target_forces
 
     def training_step(self, batch, batch_idx):
@@ -74,28 +85,31 @@ class LitModel(pl.LightningModule):
         )
 
         predicted_energies = predicted_energies.detach()
-        predicted_forces = predicted_forces.detach()
+        if self.predict_forces:
+            predicted_forces = predicted_forces.detach()
         loss_fn = MAELoss()
         train_energies_mae = loss_fn(
             predicted_energies=predicted_energies.detach(),
             target_energies=target_energies,
         ).item()
-        train_forces_mae = loss_fn(
-            predicted_forces=predicted_forces.detach(), target_forces=target_forces
-        ).item()
+        if self.predict_forces:
+            train_forces_mae = loss_fn(
+                predicted_forces=predicted_forces.detach(), target_forces=target_forces
+            ).item()
+
+            self.log(
+                "train_forces_mae",
+                train_forces_mae,
+                on_step=True,
+                on_epoch=True,
+                prog_bar=True,
+                batch_size=self.trainer.datamodule.batch_size,
+                sync_dist=True,
+            )
 
         self.log(
             "train_energies_mae",
             train_energies_mae,
-            on_step=True,
-            on_epoch=True,
-            prog_bar=True,
-            batch_size=self.trainer.datamodule.batch_size,
-            sync_dist=True,
-        )
-        self.log(
-            "train_forces_mae",
-            train_forces_mae,
             on_step=True,
             on_epoch=True,
             prog_bar=True,
@@ -122,8 +136,9 @@ class LitModel(pl.LightningModule):
         )
 
         self.train_energies_mae += train_energies_mae
-        self.train_forces_mae += train_forces_mae
         self.train_energies_rmse += train_energies_rmse
+        if self.predict_forces:
+            self.train_forces_mae += train_forces_mae
         return loss
 
     def on_train_epoch_end(self):
@@ -131,22 +146,24 @@ class LitModel(pl.LightningModule):
             len(self.trainer.datamodule.train_dataloader()) / self.trainer.num_devices
         )
         train_energies_mae = self.train_energies_mae / num_batches
-        train_forces_mae = self.train_forces_mae / num_batches
         train_energies_rmse = self.train_energies_rmse / num_batches
         print("\n")
         print(f"Energies MAE: Train {train_energies_mae:.3f}")
-        print(f"Forces MAE: Train {train_forces_mae:.3f}")
         print(f"Energies RMSE: Train {train_energies_rmse:.3f}")
+        if self.predict_forces:
+            train_forces_mae = self.train_forces_mae / num_batches
+            print(f"Forces MAE: Train {train_forces_mae:.3f}")
 
     def on_validation_epoch_start(self):
         torch.set_grad_enabled(True)
         self.val_energies_mae = 0.0
-        self.val_forces_mae = 0.0
         self.val_energies_rmse = 0.0
         self.predicted_energies = []
-        self.predicted_forces = []
         self.target_energies = []
-        self.target_forces = []
+        if self.predict_forces:
+            self.val_forces_mae = 0.0
+            self.predicted_forces = []
+            self.target_forces = []
 
     def validation_step(self, batch, batch_idx):
         (
@@ -160,21 +177,24 @@ class LitModel(pl.LightningModule):
             predicted_energies=predicted_energies.detach(),
             target_energies=target_energies,
         ).item()
-        val_forces_mae = loss_fn(
-            predicted_forces=predicted_forces.detach(), target_forces=target_forces
-        ).item()
+        if self.predict_forces:
+
+            val_forces_mae = loss_fn(
+                predicted_forces=predicted_forces.detach(), target_forces=target_forces
+            ).item()
+
+            self.log(
+                "val_forces_mae",
+                val_forces_mae,
+                on_step=True,
+                on_epoch=True,
+                prog_bar=True,
+                sync_dist=True,
+                batch_size=self.trainer.datamodule.batch_size,
+            )
         self.log(
             "val_energies_mae",
             val_energies_mae,
-            on_step=True,
-            on_epoch=True,
-            prog_bar=True,
-            sync_dist=True,
-            batch_size=self.trainer.datamodule.batch_size,
-        )
-        self.log(
-            "val_forces_mae",
-            val_forces_mae,
             on_step=True,
             on_epoch=True,
             prog_bar=True,
@@ -200,50 +220,56 @@ class LitModel(pl.LightningModule):
         )
 
         self.val_energies_mae += val_energies_mae
-        self.val_forces_mae += val_forces_mae
         self.val_energies_rmse += val_energies_rmse
         self.predicted_energies.append(predicted_energies.cpu().detach())
-        self.predicted_forces.append(predicted_forces.cpu().detach())
         self.target_energies.append(target_energies.cpu().detach())
-        self.target_forces.append(target_forces.cpu().detach())
+        if self.predict_forces:
+            self.val_forces_mae += val_forces_mae
+            self.predicted_forces.append(predicted_forces.cpu().detach())
+            self.target_forces.append(target_forces.cpu().detach())
 
     def on_validation_epoch_end(self):
         num_batches = (
             len(self.trainer.datamodule.val_dataloader()) / self.trainer.num_devices
         )
         val_energies_mae = self.val_energies_mae / num_batches
-        val_forces_mae = self.val_forces_mae / num_batches
         val_energies_rmse = self.val_energies_rmse / num_batches
         print("\n")
         print(f"Energies MAE: Val {val_energies_mae:.3f}")
-        print(f"Forces MAE: Val {val_forces_mae:.3f}")
         print(f"Energies RMSE: Val {val_energies_rmse:.3f}")
+        if self.predict_forces:
+            val_forces_mae = self.val_forces_mae / num_batches
+            print(f"Forces MAE: Val {val_forces_mae:.3f}")
+
         if isinstance(self.logger, pl.loggers.WandbLogger):
             torch.save(
                 self.predicted_energies,
                 os.path.join(self.logger.experiment.dir, "val_predicted_energies.pt"),
             )
             torch.save(
-                self.predicted_forces,
-                os.path.join(self.logger.experiment.dir, "val_predicted_forces.pt"),
-            )
-            torch.save(
                 self.target_energies,
                 os.path.join(self.logger.experiment.dir, "val_target_energies.pt"),
             )
-            torch.save(
-                self.target_forces,
-                os.path.join(self.logger.experiment.dir, "val_target_forces.pt"),
-            )
-            if self.log_wandb_tables:
-                log_wandb_data(
-                    self.predicted_energies,
+            if self.predict_forces:
+                torch.save(
                     self.predicted_forces,
-                    self.target_energies,
-                    self.target_forces,
-                    val_energies_mae,
-                    val_forces_mae,
+                    os.path.join(self.logger.experiment.dir, "val_predicted_forces.pt"),
                 )
+                torch.save(
+                    self.target_forces,
+                    os.path.join(self.logger.experiment.dir, "val_target_forces.pt"),
+                )
+
+            if self.log_wandb_tables:
+                if self.predict_forces:
+                    log_wandb_data(
+                        self.predicted_energies,
+                        self.predicted_forces,
+                        self.target_energies,
+                        self.target_forces,
+                        val_energies_mae,
+                        val_forces_mae,
+                    )
 
     def configure_optimizers(self):
         optimizer = torch.optim.Adam(
@@ -257,5 +283,5 @@ class LitModel(pl.LightningModule):
             "lr_scheduler": {
                 "scheduler": scheduler,
                 "interval": "step",
-            }
+            },
         }
