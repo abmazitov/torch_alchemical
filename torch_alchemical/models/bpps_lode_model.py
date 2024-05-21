@@ -9,6 +9,7 @@ from torch_alchemical.nn import (
     MeshPotentialFeatures,
     PowerSpectrumFeatures,
     ReLU,
+    GaussianFourierEmbeddingTensor,
 )
 from torch_alchemical.utils import get_compositions_from_numbers
 
@@ -26,6 +27,7 @@ class BPPSLodeModel(torch.nn.Module):
         lode_atomic_smearing: float,
         charges_channels: Optional[int] = None,
         trainable_basis: Optional[bool] = False,
+        gaussian_fourier_embedding: Optional[bool] = False,
         basis_scale: Optional[float] = 3.0,
         lode_mesh_spacing: Optional[float] = None,
         lode_interpolation_order: Optional[int] = 4,
@@ -57,7 +59,10 @@ class BPPSLodeModel(torch.nn.Module):
             trainable_basis=trainable_basis,
         )
         layer_size_ps = [self._num_features_ps] + hidden_sizes_ps
-        layer_size_mp = [self._num_features_mp] + hidden_sizes_mp
+        if gaussian_fourier_embedding:
+            layer_size_mp = [256] + hidden_sizes_mp
+        else:
+            layer_size_mp = [self._num_features_mp] + hidden_sizes_mp
         layers_ps: List[torch.nn.Module] = self._create_linear_layers(
             layer_size_ps, output_size
         )
@@ -73,6 +78,14 @@ class BPPSLodeModel(torch.nn.Module):
         else:
             self.nn_charges = None
         self.nn_ps = torch.nn.ModuleList(layers_ps)
+        if gaussian_fourier_embedding:
+            linear_layer_keys = Labels(
+            names=["center_type"], values=torch.tensor(self.unique_numbers).view(-1, 1)
+            )
+
+            gaussian_fourier_embedding_layer = [GaussianFourierEmbeddingTensor(linear_layer_keys, len(self.unique_numbers), 128, 1.0)]
+            # Add Gaussian Fourier Embedding Layer
+            layers_mp = gaussian_fourier_embedding_layer + layers_mp
         self.nn_mp = torch.nn.ModuleList(layers_mp)
 
     def set_composition_weights(

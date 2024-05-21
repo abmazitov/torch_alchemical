@@ -16,6 +16,7 @@ class LitModel(pl.LightningModule):
         predict_forces: bool,
         energies_weight: Optional[float] = 1.0,
         forces_weight: Optional[float] = 1.0,
+        scheduler: Optional[bool] = False,
         lr: Optional[float] = 1e-4,
         weight_decay: Optional[float] = 1e-5,
         log_wandb_tables: Optional[bool] = True,
@@ -31,6 +32,7 @@ class LitModel(pl.LightningModule):
         self.weight_decay = weight_decay
         self.log_wandb_tables = log_wandb_tables
         self.predict_forces = predict_forces
+        self.scheduler = scheduler
 
     def on_train_epoch_start(self):
         self.train_energies_mae = 0.0
@@ -147,12 +149,12 @@ class LitModel(pl.LightningModule):
         )
         train_energies_mae = self.train_energies_mae / num_batches
         train_energies_rmse = self.train_energies_rmse / num_batches
-        print("\n")
-        print(f"Energies MAE: Train {train_energies_mae:.3f}")
-        print(f"Energies RMSE: Train {train_energies_rmse:.3f}")
+        #print("\n")
+        #print(f"Energies MAE: Train {train_energies_mae:.3f}")
+        #print(f"Energies RMSE: Train {train_energies_rmse:.3f}")
         if self.predict_forces:
             train_forces_mae = self.train_forces_mae / num_batches
-            print(f"Forces MAE: Train {train_forces_mae:.3f}")
+            #print(f"Forces MAE: Train {train_forces_mae:.3f}")
 
     def on_validation_epoch_start(self):
         torch.set_grad_enabled(True)
@@ -234,12 +236,12 @@ class LitModel(pl.LightningModule):
         )
         val_energies_mae = self.val_energies_mae / num_batches
         val_energies_rmse = self.val_energies_rmse / num_batches
-        print("\n")
-        print(f"Energies MAE: Val {val_energies_mae:.3f}")
-        print(f"Energies RMSE: Val {val_energies_rmse:.3f}")
+        #print("\n")
+        #print(f"Energies MAE: Val {val_energies_mae:.3f}")
+        #print(f"Energies RMSE: Val {val_energies_rmse:.3f}")
         if self.predict_forces:
             val_forces_mae = self.val_forces_mae / num_batches
-            print(f"Forces MAE: Val {val_forces_mae:.3f}")
+            #print(f"Forces MAE: Val {val_forces_mae:.3f}")
 
         if isinstance(self.logger, pl.loggers.WandbLogger):
             torch.save(
@@ -275,9 +277,12 @@ class LitModel(pl.LightningModule):
         optimizer = torch.optim.Adam(
             self.parameters(), lr=self.lr, weight_decay=self.weight_decay
         )
-        scheduler = torch.optim.lr_scheduler.OneCycleLR(
-            optimizer, max_lr=1e-2, total_steps=self.trainer.estimated_stepping_batches
-        )
+        if self.scheduler:
+            scheduler = torch.optim.lr_scheduler.OneCycleLR(
+                optimizer, max_lr=1e-2, total_steps=self.trainer.estimated_stepping_batches
+            )
+        else: # Dummy scheduler
+            scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=99999999, gamma=0.5)
         return {
             "optimizer": optimizer,
             "lr_scheduler": {

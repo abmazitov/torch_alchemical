@@ -11,6 +11,7 @@ from .loss_functions.sse import SSELoss, WeightedSSELoss
 from .mesh_potential import MeshPotentialFeatures
 from .normalization.layer_norm import LayerNorm
 from .power_spectrum import PowerSpectrumFeatures
+from .gaussian_fourier_embedding import GaussianFourierEmbeddingTensor
 
 __all__ = [
     "Linear",
