@@ -8,7 +8,7 @@ from torch_alchemical.nn import (
     LinearMap,
     MeshPotentialFeatures,
     PowerSpectrumFeatures,
-    ReLU,
+    GELU,
     GaussianFourierEmbeddingTensor,
 )
 from torch_alchemical.utils import get_compositions_from_numbers
@@ -24,14 +24,18 @@ class BPPSLodeModel(torch.nn.Module):
         cutoff: float,
         basis_cutoff_power_spectrum: float,
         radial_basis_type: str,
-        lode_atomic_smearing: float,
         charges_channels: Optional[int] = None,
         trainable_basis: Optional[bool] = False,
         gaussian_fourier_embedding: Optional[bool] = False,
+        gaussian_feature_scale: Optional[int] = 1,
+        n_of_gaussian_features: Optional[int] = 128,
         basis_scale: Optional[float] = 3.0,
+        lode_atomic_smearing: Optional[float] = None,
         lode_mesh_spacing: Optional[float] = None,
         lode_interpolation_order: Optional[int] = 4,
-        lode_subtract_self: Optional[bool] = False,
+        lode_subtract_self: Optional[bool] = True,
+        lode_subtract_interior: Optional[bool] = False,
+        lode_exponent: Optional[torch.Tensor] = torch.tensor(1.0, dtype=torch.float64),
     ):
 
         # Call parent `__init__` after we initlize the MeshPotentialFeatures instance to
@@ -39,12 +43,15 @@ class BPPSLodeModel(torch.nn.Module):
         super().__init__()
 
         self.meshlode_features_layer = MeshPotentialFeatures(
+            sr_cutoff= cutoff,
             atomic_smearing=lode_atomic_smearing,
             mesh_spacing=lode_mesh_spacing,
             interpolation_order=lode_interpolation_order,
             subtract_self=lode_subtract_self,
             all_types=unique_numbers,
+            subtract_interior=lode_subtract_interior,
             charges_channels=charges_channels,
+            exponent=lode_exponent,
         )
         self.unique_numbers = unique_numbers
         self.register_buffer(
@@ -60,9 +67,10 @@ class BPPSLodeModel(torch.nn.Module):
         )
         layer_size_ps = [self._num_features_ps] + hidden_sizes_ps
         if gaussian_fourier_embedding:
-            layer_size_mp = [256] + hidden_sizes_mp
+            layer_size_mp = [2 * n_of_gaussian_features] + hidden_sizes_mp
         else:
             layer_size_mp = [self._num_features_mp] + hidden_sizes_mp
+
         layers_ps: List[torch.nn.Module] = self._create_linear_layers(
             layer_size_ps, output_size
         )
@@ -83,7 +91,7 @@ class BPPSLodeModel(torch.nn.Module):
             names=["center_type"], values=torch.tensor(self.unique_numbers).view(-1, 1)
             )
 
-            gaussian_fourier_embedding_layer = [GaussianFourierEmbeddingTensor(linear_layer_keys, len(self.unique_numbers), 128, 1.0)]
+            gaussian_fourier_embedding_layer = [GaussianFourierEmbeddingTensor(linear_layer_keys, len(self.unique_numbers), n_of_gaussian_features, gaussian_feature_scale)]
             # Add Gaussian Fourier Embedding Layer
             layers_mp = gaussian_fourier_embedding_layer + layers_mp
         self.nn_mp = torch.nn.ModuleList(layers_mp)
@@ -155,7 +163,7 @@ class BPPSLodeModel(torch.nn.Module):
                 )
             )
             layers.append(LayerNorm(layer_size[layer_index]))
-            layers.append(ReLU())
+            layers.append(GELU())
         layers.append(
             LinearMap(
                 keys=linear_layer_keys,
@@ -187,6 +195,8 @@ class BPPSLodeModel(torch.nn.Module):
         features_mp = self._get_features_mp(
             positions, cells, numbers, edge_indices, edge_offsets, batch, charges
         )
+        print(features_mp[0].values)
+        print(batch)
         for layer in self.nn_ps:
             features_ps = layer(features_ps)
         for layer in self.nn_mp:
@@ -217,15 +227,7 @@ class BPPSLodeModel(torch.nn.Module):
             index=batch,
             source=features_mp,
         )
-        compositions = torch.stack(
-            get_compositions_from_numbers(
-                numbers,
-                self.unique_numbers,
-                batch,
-                self.composition_weights.dtype,
-            )
-        )
-        energies = energies_ps + energies_mp
 
-        energies = energies + compositions @ self.composition_weights.T
+        energies = energies_ps + energies_mp
+        energies = energies# + compositions @ self.composition_weights.T
         return energies

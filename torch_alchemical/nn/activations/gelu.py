@@ -4,10 +4,10 @@ import torch
 from metatensor.torch import TensorBlock, TensorMap
 
 
-class ReLU(torch.nn.Module):
+class GELU(torch.nn.Module):
     def __init__(self, *args, **kwargs):
         super().__init__()
-        self.relu = torch.nn.ReLU(*args, **kwargs)
+        self.relu = torch.nn.GELU(*args, **kwargs)
 
     def forward(self, tensormap: TensorMap) -> TensorMap:
         output_blocks: List[TensorBlock] = []

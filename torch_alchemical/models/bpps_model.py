@@ -3,7 +3,7 @@ from typing import List, Optional
 import torch
 from metatensor.torch import Labels
 
-from torch_alchemical.nn import LayerNorm, LinearMap, PowerSpectrumFeatures, ReLU
+from torch_alchemical.nn import LayerNorm, LinearMap, PowerSpectrumFeatures, GELU
 from torch_alchemical.utils import get_compositions_from_numbers
 
 

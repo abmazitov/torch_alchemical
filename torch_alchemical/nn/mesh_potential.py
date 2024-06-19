@@ -2,7 +2,7 @@ from typing import List, Optional
 
 import metatensor.torch
 import torch
-from meshlode.metatensor import MeshPotential
+from meshlode.metatensor import MeshEwaldPotential
 from metatensor.torch import Labels, TensorMap
 
 from ..utils import get_metatensor_systems
@@ -11,20 +11,26 @@ from ..utils import get_metatensor_systems
 class MeshPotentialFeatures(torch.nn.Module):
     def __init__(
         self,
-        atomic_smearing: float,
+        sr_cutoff: float,
+        atomic_smearing: Optional[float] = None,
         mesh_spacing: Optional[float] = None,
         interpolation_order: Optional[int] = 4,
-        subtract_self: Optional[bool] = False,
+        subtract_self: Optional[bool] = True,
         all_types: Optional[List[int]] = None,
+        subtract_interior: Optional[bool] = False,
         charges_channels: Optional[int] = None,
+        exponent: Optional[torch.Tensor] = torch.tensor(1.0, dtype=torch.float64),
     ):
         super().__init__()
-        self.calcultor = MeshPotential(
+        self.calcultor = MeshEwaldPotential(
+            sr_cutoff= sr_cutoff,
             atomic_smearing=atomic_smearing,
             mesh_spacing=mesh_spacing,
             interpolation_order=interpolation_order,
             subtract_self=subtract_self,
             all_types=all_types,
+            subtract_interior=subtract_interior,
+            exponent=exponent,
         )
 
         # In MeshLODE we create one subgrid per atomic type

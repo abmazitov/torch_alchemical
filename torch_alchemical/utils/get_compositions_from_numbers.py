@@ -12,7 +12,7 @@ def get_compositions_from_numbers(
     compositions: List[torch.Tensor] = []
     device = numbers.device
     _, counts = torch.unique(batch, return_counts=True)
-    dtype = dtype if dtype is not None else torch.float64
+    dtype = dtype if dtype is not None else torch.float32
     ptr = torch.cat([torch.tensor([0], device=device), torch.cumsum(counts, dim=0)])
     splitted_numbers = [numbers[ptr[i] : ptr[i + 1]] for i in range(len(ptr) - 1)]
     unique_numbers_tensor = torch.tensor(

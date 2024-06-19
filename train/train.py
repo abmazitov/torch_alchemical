@@ -1,11 +1,8 @@
-from torch_alchemical.models import AlchemicalModel, BPPSModel
+from torch_alchemical.models import AlchemicalModel, BPPSModel, BPPSLodeModel
 from torch_alchemical.tools.train import LitDataModule, LitModel
 from torch_alchemical.utils import get_compositions_from_numbers
 from torch_alchemical.tools.train.initialize import (
-    get_average_number_of_atoms,
     get_composition_weights,
-    get_energies_scale_factor,
-    rescale_energies_and_forces,
 )
 import torch
 from ruamel.yaml import YAML
@@ -14,9 +11,10 @@ import lightning.pytorch as pl
 import os
 from datetime import datetime
 
+torch.manual_seed(0)
+torch.set_float32_matmul_precision("high")
 
-torch.set_default_dtype(torch.float64)
-SUPPORTED_ARCHITECTURES = ["alchemical_model", "soap-bpnn"]
+SUPPORTED_ARCHITECTURES = ["alchemical_model", "soap-bpnn", "soap-bpnn-lode"]
 
 
 if __name__ == "__main__":
@@ -26,7 +24,6 @@ if __name__ == "__main__":
     with open(args.parameters, "r") as f:
         yaml = YAML(typ="safe", pure=True)
         parameters = yaml.load(f)
-
     datamodule = LitDataModule(**parameters["datamodule"])
     datamodule.prepare_data()
     datamodule.setup()
@@ -41,8 +38,13 @@ if __name__ == "__main__":
             unique_numbers=datamodule.unique_numbers,
             **parameters["model"],
         )
-    else:
+    elif architecture == "alchemical_model":
         model = AlchemicalModel(
+            unique_numbers=datamodule.unique_numbers,
+            **parameters["model"],
+        )
+    else:
+        model = BPPSLodeModel(
             unique_numbers=datamodule.unique_numbers,
             **parameters["model"],
         )
@@ -61,28 +63,9 @@ if __name__ == "__main__":
         get_compositions_from_numbers(numbers, unique_numbers, batch)
     )
     composition_weights = get_composition_weights(train_dataset, compositions)
-    energies_scale_factor = get_energies_scale_factor(
-        train_dataset, compositions, composition_weights
-    )
-    average_number_of_atoms = get_average_number_of_atoms(train_dataset)
-    average_number_of_neighbors = torch.mean(
-        torch.tensor(
-            [data.edge_index.shape[1] / data.pos.shape[0] for data in train_dataset]
-        )
-    )
-
-    # Rescaling the energies and forces
-    rescale_energies_and_forces(
-        train_dataset, compositions, composition_weights, energies_scale_factor
-    )
-
-    # Setting the normalization factors for the model
-    model.set_normalization_factor(average_number_of_atoms)
-    model.set_energies_scale_factor(energies_scale_factor)
-    model.set_basis_normalization_factor(average_number_of_neighbors)
     model.set_composition_weights(composition_weights)
-
-    model = torch.jit.script(model)
+    #model = torch.compile(model)
+    print(model)
     restart = parameters["litmodel"].pop("restart")
     if restart:
         litmodel = LitModel.load_from_checkpoint(
@@ -90,12 +73,11 @@ if __name__ == "__main__":
         )
     else:
         litmodel = LitModel(model=model, **parameters["litmodel"])
-
-    early_stopping_callback = parameters["trainer"].pop("early_stopping_callback")
+    #litmodel = torch.compile(litmodel, fullgraph=True)
     checkpoint_callback = parameters["trainer"].pop("checkpoint_callback")
     callbacks = [
-        pl.callbacks.EarlyStopping(**early_stopping_callback),
         pl.callbacks.ModelCheckpoint(**checkpoint_callback),
+        pl.callbacks.LearningRateMonitor(logging_interval="epoch"),
     ]
     logname = parameters["logging"].pop("name")
     logname += f"_{datetime.now().strftime('%d-%m-%Y--%H:%M:%S')}"

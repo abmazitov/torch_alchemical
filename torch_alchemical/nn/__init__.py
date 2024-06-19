@@ -1,8 +1,7 @@
-from .activations.relu import ReLU
+from .activations.gelu import GELU
 from .activations.selu import SELU
 from .activations.silu import SiLU
 from .embeddings.alchemical_embedding import AlchemicalEmbedding
-from .linear import Linear
 from .linear_map import LinearMap
 from .loss_functions.huber import HuberLoss, WeightedHuberLoss
 from .loss_functions.mae import MAELoss, WeightedMAELoss
