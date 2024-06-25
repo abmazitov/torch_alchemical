@@ -6,28 +6,11 @@ from ase.io import read
 from torch_geometric.loader import DataLoader
 
 from torch_alchemical.data import AtomisticDataset
-from torch_alchemical.transforms import NeighborList
-from torch_alchemical.utils import get_list_of_unique_atomic_numbers
-
-
-def train_test_split(dataset, lengths, shuffle=True):
-    train_val_test = [length / sum(lengths) for length in lengths]
-    if shuffle:
-        return torch.utils.data.random_split(dataset, lengths)
-    else:
-        train_set_indices = range(0, int(train_val_test[0] * len(dataset)))
-        train_set = torch.utils.data.Subset(dataset, train_set_indices)
-        val_set_indices = range(
-            int(train_val_test[0] * len(dataset)), int(sum(lengths[:2]) * len(dataset))
-        )
-        val_set = torch.utils.data.Subset(dataset, val_set_indices)
-        test_set_indices = range(
-            int(sum(lengths[:2]) * len(dataset)), int(sum(lengths) * len(dataset))
-        )
-
-        test_set = torch.utils.data.Subset(dataset, test_set_indices)
-        return train_set, val_set, test_set
-
+from torch_alchemical.data.preprocess import (
+    NeighborList, 
+    get_list_of_unique_atomic_numbers,
+    get_compositions_from_numbers,
+    )
 
 class LitDataModule(pl.LightningDataModule):
     def __init__(
@@ -62,32 +45,31 @@ class LitDataModule(pl.LightningDataModule):
             self.train_frames + self.val_frames + self.test_frames
         )
 
-    def setup(self, stage: Optional[str] = None):
-        if stage in (None, "prepare"):
-            transforms = [
-                NeighborList(cutoff_radius=self.neighborlist_cutoff_radius),
-            ]
-            self.train_dataset = AtomisticDataset(
-                self.train_frames,
+    def setup(self, stage=None):
+        transforms = [
+            NeighborList(cutoff_radius=self.neighborlist_cutoff_radius),
+        ]
+        self.train_dataset = AtomisticDataset(
+            self.train_frames,
+            target_properties=self.target_properties,
+            transforms=transforms,
+            verbose=self.verbose,
+        )
+        self.val_dataset = AtomisticDataset(
+            self.val_frames,
+            target_properties=self.target_properties,
+            transforms=transforms,
+            verbose=self.verbose,
+        )
+        if self.test_frames_path is not None:
+            self.test_dataset = AtomisticDataset(
+                self.test_frames,
                 target_properties=self.target_properties,
                 transforms=transforms,
                 verbose=self.verbose,
             )
-            self.val_dataset = AtomisticDataset(
-                self.val_frames,
-                target_properties=self.target_properties,
-                transforms=transforms,
-                verbose=self.verbose,
-            )
-            if self.test_frames_path is not None:
-                self.test_dataset = AtomisticDataset(
-                    self.test_frames,
-                    target_properties=self.target_properties,
-                    transforms=transforms,
-                    verbose=self.verbose,
-                )
-            else:
-                self.test_dataset = []  # type: ignore
+        else:
+            self.test_dataset = []  # type: ignore
 
     def train_dataloader(self):
         batch_size = self.batch_size
@@ -107,3 +89,22 @@ class LitDataModule(pl.LightningDataModule):
             self.test_dataset, batch_size=batch_size, shuffle=self.shuffle
         )
         return dataloader
+
+    def prepare_compositions_weights(self):
+        train_dataset = self.train_dataset
+        unique_numbers = self.unique_numbers
+        numbers = torch.cat([data.numbers for data in train_dataset])
+        batch = torch.cat(
+            [
+                torch.repeat_interleave(torch.tensor([i]), data.num_nodes)
+                for i, data in enumerate(train_dataset)
+            ]
+        )
+        compositions = torch.stack(
+            get_compositions_from_numbers(numbers, unique_numbers, batch)
+        ).to(torch.get_default_dtype())
+
+        energies = torch.cat([data.energies.view(1, -1) for data in train_dataset], dim=0)
+        weights = torch.linalg.lstsq(compositions, energies).solution
+        composition_weights = weights.T
+        return composition_weights

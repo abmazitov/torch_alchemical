@@ -6,7 +6,7 @@ from torch_geometric.data import Data
 from torch_geometric.transforms import BaseTransform
 from tqdm import tqdm
 
-from torch_alchemical.utils import get_target_properties
+from torch_alchemical.data.preprocess import get_target_properties
 
 AVAILABLE_TARGET_PROPERTIES = ["energies", "forces"]
 

@@ -1,71 +1,33 @@
-from torch_alchemical.models import AlchemicalModel, BPPSModel, BPPSLodeModel
-from torch_alchemical.tools.train import LitDataModule, LitModel
-from torch_alchemical.utils import get_compositions_from_numbers
-from torch_alchemical.tools.train.initialize import (
-    get_composition_weights,
-)
+from torch_alchemical.models import BPPSLodeModel, LitModel
+from torch_alchemical.data import LitDataModule
+from torch_alchemical.utils import load_parameters
+
 import torch
-from ruamel.yaml import YAML
-import argparse
 import lightning.pytorch as pl
 import os
 from datetime import datetime
 
 torch.manual_seed(0)
-torch.set_float32_matmul_precision("high")
+torch.set_default_dtype(torch.float64)
 
-SUPPORTED_ARCHITECTURES = ["alchemical_model", "soap-bpnn", "soap-bpnn-lode"]
+def main():
+    parameters = load_parameters()
 
-
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    parser.add_argument("parameters", type=str)
-    args = parser.parse_args()
-    with open(args.parameters, "r") as f:
-        yaml = YAML(typ="safe", pure=True)
-        parameters = yaml.load(f)
     datamodule = LitDataModule(**parameters["datamodule"])
     datamodule.prepare_data()
     datamodule.setup()
 
-    architecture = parameters.pop("architecture")
-    if architecture not in SUPPORTED_ARCHITECTURES:
-        raise ValueError(
-            f"Architecture {architecture} is not supported. Supported architectures are {SUPPORTED_ARCHITECTURES}"
-        )
-    if architecture == "soap-bpnn":
-        model = BPPSModel(
-            unique_numbers=datamodule.unique_numbers,
-            **parameters["model"],
-        )
-    elif architecture == "alchemical_model":
-        model = AlchemicalModel(
-            unique_numbers=datamodule.unique_numbers,
-            **parameters["model"],
-        )
-    else:
-        model = BPPSLodeModel(
-            unique_numbers=datamodule.unique_numbers,
-            **parameters["model"],
-        )
+    composition_weights = datamodule.prepare_compositions_weights()
 
-    # Calclating the normalization factors
-    train_dataset = datamodule.train_dataset
-    unique_numbers = datamodule.unique_numbers
-    numbers = torch.cat([data.numbers for data in train_dataset])
-    batch = torch.cat(
-        [
-            torch.repeat_interleave(torch.tensor([i]), data.num_nodes)
-            for i, data in enumerate(train_dataset)
-        ]
+    model = BPPSLodeModel(
+        unique_numbers=datamodule.unique_numbers,
+        **parameters["model"],
     )
-    compositions = torch.stack(
-        get_compositions_from_numbers(numbers, unique_numbers, batch)
-    )
-    composition_weights = get_composition_weights(train_dataset, compositions)
-    model.set_composition_weights(composition_weights)
-    #model = torch.compile(model)
+
+    model.set_compositions_weights(composition_weights)
+
     print(model)
+
     restart = parameters["litmodel"].pop("restart")
     if restart:
         litmodel = LitModel.load_from_checkpoint(
@@ -73,7 +35,7 @@ if __name__ == "__main__":
         )
     else:
         litmodel = LitModel(model=model, **parameters["litmodel"])
-    #litmodel = torch.compile(litmodel, fullgraph=True)
+
     checkpoint_callback = parameters["trainer"].pop("checkpoint_callback")
     callbacks = [
         pl.callbacks.ModelCheckpoint(**checkpoint_callback),
@@ -95,3 +57,6 @@ if __name__ == "__main__":
         **parameters["trainer"],
     )
     trainer.fit(litmodel, datamodule)
+
+if __name__ == "__main__":
+    main()

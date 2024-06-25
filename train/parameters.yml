@@ -1,42 +1,41 @@
 neighborlist_cutoff: &neighborlist_cutoff 2.0
-architecture: "soap-bpnn-lode"
 
 datamodule:
   train_frames_path: "debug.xyz"
   val_frames_path: "debug.xyz"
-  batch_size: 128
+  batch_size: 10
   neighborlist_cutoff_radius: *neighborlist_cutoff
   target_properties: ["energies"]
   shuffle: true
 
 litmodel:
-  restart: false #"best_model.pl.ckpt"
+  restart: "best_model.pl.ckpt"
   scheduler: false
   energies_weight: 1.0
   forces_weight: 1.0
-  lr: 3e-5
-  weight_decay: 1e-2
+  lr: 3e-4
+  weight_decay: 1e-5
   predict_forces: false
 
 model:
     #hidden_sizes: [256, 64, 32]
-  hidden_sizes_ps: [32, 64, 64]
-  hidden_sizes_mp: [256, 256, 256]
+  hidden_sizes_ps: []
+  hidden_sizes_mp: [32, 32, 32]
   output_size: 1
   cutoff: *neighborlist_cutoff
-  basis_cutoff_power_spectrum: 100
+  basis_cutoff_power_spectrum: 9
   radial_basis_type: "physical"
   trainable_basis: false
   gaussian_fourier_embedding: false
   lode_subtract_interior: true
 
 trainer:
-  max_epochs: 100
+  max_epochs: 1000
   accelerator: "gpu"
   check_val_every_n_epoch: 50
   checkpoint_callback:
     monitor: "val_energies_rmse"
-    filename: "best_model.pl"
+    filename: "best_model"
     save_top_k: 1
     mode: "min"
 
@@ -44,7 +43,7 @@ logging:
   project: "debug"
   name: "debug"
   save_dir: "./logs"
-  log_model: false
+  log_model: true
 
 
 

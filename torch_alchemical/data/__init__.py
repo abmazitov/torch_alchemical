@@ -1,5 +1,2 @@
 from .atomistic_dataset import AtomisticDataset
-
-__all__ = [
-    "AtomisticDataset",
-]
+from .lightning_datamodule import LitDataModule

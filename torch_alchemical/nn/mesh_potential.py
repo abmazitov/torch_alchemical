@@ -5,8 +5,9 @@ import torch
 from meshlode.metatensor import MeshEwaldPotential
 from metatensor.torch import Labels, TensorMap
 
-from ..utils import get_metatensor_systems
 
+from ..utils import get_metatensor_systems
+from ..utils import split_edges_by_batch
 
 class MeshPotentialFeatures(torch.nn.Module):
     def __init__(
@@ -80,8 +81,10 @@ class MeshPotentialFeatures(torch.nn.Module):
                 )
 
                 system.add_data("charges", charges_block)
-
-        return self.calcultor.compute(systems)
+        edge_indices_batched, edge_offsets_batched = split_edges_by_batch(
+            edge_indices, edge_offsets, batch
+        )
+        return self.calcultor.compute(systems)#, edge_indices_batched, edge_offsets_batched)
 
     @property
     def num_features(self) -> int:

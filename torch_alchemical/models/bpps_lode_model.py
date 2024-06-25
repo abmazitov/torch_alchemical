@@ -11,8 +11,6 @@ from torch_alchemical.nn import (
     GELU,
     GaussianFourierEmbeddingTensor,
 )
-from torch_alchemical.utils import get_compositions_from_numbers
-
 
 class BPPSLodeModel(torch.nn.Module):
     def __init__(
@@ -55,7 +53,7 @@ class BPPSLodeModel(torch.nn.Module):
         )
         self.unique_numbers = unique_numbers
         self.register_buffer(
-            "composition_weights", torch.zeros((output_size, len(unique_numbers)))
+            "compositions_weights", torch.zeros((output_size, len(unique_numbers)))
         )
         self.ps_features_layer = PowerSpectrumFeatures(
             all_species=unique_numbers,
@@ -96,16 +94,16 @@ class BPPSLodeModel(torch.nn.Module):
             layers_mp = gaussian_fourier_embedding_layer + layers_mp
         self.nn_mp = torch.nn.ModuleList(layers_mp)
 
-    def set_composition_weights(
+    def set_compositions_weights(
         self,
-        composition_weights: torch.Tensor,
+        compositions_weights: torch.Tensor,
     ):
-        if composition_weights.shape != self.composition_weights.shape:  # type: ignore
+        if compositions_weights.shape != self.compositions_weights.shape:  # type: ignore
             raise ValueError(
                 "The shape of the composition weights does not match "
-                + f"the expected shape {composition_weights.shape}."
+                + f"the expected shape {compositions_weights.shape}."
             )
-        self.composition_weights = composition_weights
+        self.compositions_weights = compositions_weights
 
     def _get_features_ps(
         self,
@@ -186,6 +184,16 @@ class BPPSLodeModel(torch.nn.Module):
         features_ps = self._get_features_ps(
             positions, cells, numbers, edge_indices, edge_offsets, batch
         )
+        print(f"Ps features 0 sum is:  {features_ps[0].values.sort()[0].sum()}")
+        print(features_ps[0].values.sum(axis = 0))
+        # print(f"Ps features 0 shape is:  {features_ps[0].values.shape}")
+        # print(f"Ps features 0 num of non zero is:  {torch.nonzero(features_ps[0].values).shape}")
+        # print(f"Ps features 1 sum is:  {features_ps[1].values.sum()}")
+        # print(f"Ps features 1 shape is:  {features_ps[1].values.shape}")
+        # print(f"Ps features 2 sum is:  {features_ps[2].values.sum()}")
+        # print(f"Ps features 2 shape is:  {features_ps[2].values.shape}")
+        # print(f"Ps features 3 sum is:  {features_ps[3].values.sum()}")
+        # print(f"Ps features 3 shape is:  {features_ps[3].values.shape}")
         if self.nn_charges is not None:
             charges = self.nn_charges[0](features_ps)
             for layer in self.nn_charges[1:]:
@@ -195,8 +203,6 @@ class BPPSLodeModel(torch.nn.Module):
         features_mp = self._get_features_mp(
             positions, cells, numbers, edge_indices, edge_offsets, batch, charges
         )
-        print(features_mp[0].values)
-        print(batch)
         for layer in self.nn_ps:
             features_ps = layer(features_ps)
         for layer in self.nn_mp:
