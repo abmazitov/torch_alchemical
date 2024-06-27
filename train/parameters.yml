@@ -5,22 +5,22 @@ datamodule:
   val_frames_path: "debug.xyz"
   batch_size: 10
   neighborlist_cutoff_radius: *neighborlist_cutoff
-  target_properties: ["energies"]
+  target_properties: ["energies"] #["energies", "forces"]
   shuffle: true
 
 litmodel:
-  restart: "best_model.pl.ckpt"
+  restart: false #"best_model.pl.ckpt"
   scheduler: false
   energies_weight: 1.0
   forces_weight: 1.0
-  lr: 3e-4
+  lr: 3e-3
   weight_decay: 1e-5
   predict_forces: false
 
 model:
     #hidden_sizes: [256, 64, 32]
   hidden_sizes_ps: []
-  hidden_sizes_mp: [32, 32, 32]
+  hidden_sizes_mp: [32,32,32]
   output_size: 1
   cutoff: *neighborlist_cutoff
   basis_cutoff_power_spectrum: 9

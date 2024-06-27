@@ -84,7 +84,8 @@ class MeshPotentialFeatures(torch.nn.Module):
         edge_indices_batched, edge_offsets_batched = split_edges_by_batch(
             edge_indices, edge_offsets, batch
         )
-        return self.calcultor.compute(systems)#, edge_indices_batched, edge_offsets_batched)
+
+        return self.calcultor.compute(systems, edge_indices_batched, edge_offsets_batched)
 
     @property
     def num_features(self) -> int:

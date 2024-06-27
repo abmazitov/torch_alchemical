@@ -5,7 +5,6 @@ import lightning.pytorch as pl
 import torch
 
 from torch.nn import MSELoss
-from torch_alchemical.tools.logging.wandb import log_wandb_data
 from torch_alchemical.utils import get_autograd_forces
 from torch_alchemical.data.preprocess import get_compositions_from_numbers
 

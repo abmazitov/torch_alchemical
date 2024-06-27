@@ -148,23 +148,23 @@ class BPPSLodeModel(torch.nn.Module):
 
     def _create_linear_layers(self, layer_size: List[int], output_size: int):
         layers: List[torch.nn.Module] = []
-        linear_layer_keys = Labels(
+        layer_keys = Labels(
             names=["center_type"], values=torch.tensor(self.unique_numbers).view(-1, 1)
         )
         for layer_index in range(1, len(layer_size)):
             layers.append(
                 LinearMap(
-                    keys=linear_layer_keys,
+                    keys=layer_keys,
                     in_features=layer_size[layer_index - 1],
                     out_features=layer_size[layer_index],
                     bias=True,
                 )
             )
-            layers.append(LayerNorm(layer_size[layer_index]))
+            layers.append(LayerNorm(layer_keys, layer_size[layer_index]))
             layers.append(GELU())
         layers.append(
             LinearMap(
-                keys=linear_layer_keys,
+                keys=layer_keys,
                 in_features=layer_size[-1],
                 out_features=output_size,
                 bias=True,
@@ -184,16 +184,6 @@ class BPPSLodeModel(torch.nn.Module):
         features_ps = self._get_features_ps(
             positions, cells, numbers, edge_indices, edge_offsets, batch
         )
-        print(f"Ps features 0 sum is:  {features_ps[0].values.sort()[0].sum()}")
-        print(features_ps[0].values.sum(axis = 0))
-        # print(f"Ps features 0 shape is:  {features_ps[0].values.shape}")
-        # print(f"Ps features 0 num of non zero is:  {torch.nonzero(features_ps[0].values).shape}")
-        # print(f"Ps features 1 sum is:  {features_ps[1].values.sum()}")
-        # print(f"Ps features 1 shape is:  {features_ps[1].values.shape}")
-        # print(f"Ps features 2 sum is:  {features_ps[2].values.sum()}")
-        # print(f"Ps features 2 shape is:  {features_ps[2].values.shape}")
-        # print(f"Ps features 3 sum is:  {features_ps[3].values.sum()}")
-        # print(f"Ps features 3 shape is:  {features_ps[3].values.shape}")
         if self.nn_charges is not None:
             charges = self.nn_charges[0](features_ps)
             for layer in self.nn_charges[1:]:
@@ -235,5 +225,5 @@ class BPPSLodeModel(torch.nn.Module):
         )
 
         energies = energies_ps + energies_mp
-        energies = energies# + compositions @ self.composition_weights.T
+
         return energies
