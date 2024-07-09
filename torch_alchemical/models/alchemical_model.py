@@ -90,7 +90,7 @@ class AlchemicalModel(torch.nn.Module):
             LinearMap(
                 keys=linear_layer_keys,
                 in_features=layer_size[-1],
-                out_features=1,
+                out_features=output_size,
                 bias=False,
             )
         )
